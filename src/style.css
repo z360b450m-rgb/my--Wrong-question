@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Markdown content styles */
+.md-content img { max-width: 100%; border-radius: 6px; margin: 8px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.md-content h1, .md-content h2, .md-content h3 { margin: 10px 0 6px; font-size: 1.1em; }
+.md-content p { margin: 4px 0; }
+.md-content pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
+.md-content code { font-family: "JetBrains Mono", "Fira Code", monospace; font-size: 0.9em; }
+.md-content :not(pre) > code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; }
+.md-content blockquote { border-left: 3px solid #6366f1; padding-left: 12px; color: #6b7280; margin: 8px 0; }
+.md-content ul, .md-content ol { padding-left: 20px; margin: 4px 0; }
+.md-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+.md-content th, .md-content td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; }
+.md-content th { background: #f9fafb; font-weight: 600; }
+
+/* Toast animation */
+.toast-enter-active { animation: toast-in 0.3s ease; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* Stats panel slide transition */
+.stats-enter-active { transition: opacity 0.2s ease; }
+.stats-enter-active .fixed.right-0 { transition: transform 0.25s ease; }
+.stats-enter-from { opacity: 0; }
+.stats-enter-from .fixed.right-0 { transform: translateX(100%); }
+.stats-leave-active { transition: opacity 0.2s ease; }
+.stats-leave-active .fixed.right-0 { transition: transform 0.2s ease; }
+.stats-leave-to { opacity: 0; }
+.stats-leave-to .fixed.right-0 { transform: translateX(100%); }

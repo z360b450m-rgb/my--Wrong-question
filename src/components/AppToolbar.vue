@@ -1,0 +1,202 @@
+<script setup lang="ts">
+defineProps<{
+  activeId: string | null
+  answersHidden: boolean
+  canGoPrev: boolean
+  canGoNext: boolean
+  searchQuery: string
+  mode: 'edit' | 'review'
+  dueCount: number
+  progress: string
+  drawingEnabled: boolean
+  statsOpen: boolean
+}>()
+
+const emit = defineEmits<{
+  search: [query: string]
+  new: []
+  prev: []
+  next: []
+  reveal: []
+  delete: []
+  toggleMode: []
+  toggleDrawing: []
+  toggleStats: []
+  exportJSON: []
+  importJSON: []
+}>()
+</script>
+
+<template>
+  <div class="flex items-center gap-2.5 px-5 py-3 bg-white border-b border-gray-200">
+    <!-- Mode toggle -->
+    <button
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all"
+      :class="mode === 'review'
+        ? 'bg-accent text-white hover:brightness-110'
+        : 'border border-gray-200 bg-white hover:bg-gray-100 text-gray-700'"
+      @click="emit('toggleMode')"
+    >
+      <svg v-if="mode === 'edit'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+      </svg>
+      <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+      {{ mode === 'review' ? '退出复习' : '复习模式' }}
+      <span v-if="mode === 'edit' && dueCount > 0" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">{{ dueCount }}</span>
+    </button>
+
+    <!-- Drawing toggle -->
+    <button
+      class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all"
+      :class="drawingEnabled
+        ? 'bg-amber-500 text-white hover:brightness-110'
+        : 'border border-gray-200 bg-white hover:bg-gray-100 text-gray-600'"
+      title="画笔 / 橡皮"
+      @click="emit('toggleDrawing')"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+      画笔
+    </button>
+
+    <!-- Stats toggle -->
+    <button
+      class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all"
+      :class="statsOpen
+        ? 'bg-accent text-white hover:brightness-110'
+        : 'border border-gray-200 bg-white hover:bg-gray-100 text-gray-600'"
+      title="统计面板"
+      @click="emit('toggleStats')"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+      统计
+    </button>
+
+    <!-- Divider -->
+    <div class="w-px h-5 bg-gray-200" />
+
+    <!-- Edit mode controls -->
+    <template v-if="mode === 'edit'">
+      <!-- Search -->
+      <div class="flex-1 flex items-center gap-2 bg-[#f7f8fa] rounded-md px-3 py-1.5">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 flex-shrink-0">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="text"
+          placeholder="搜索错题..."
+          class="flex-1 border-none bg-transparent text-[13px] outline-none text-gray-800"
+          :value="searchQuery"
+          @input="emit('search', ($event.target as HTMLInputElement).value)"
+        />
+      </div>
+
+      <!-- New entry -->
+      <button
+        class="btn-primary flex items-center gap-1 px-3.5 py-1.5 rounded-md bg-accent text-white text-[13px] font-medium hover:brightness-110 transition-all"
+        @click="emit('new')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        新建错题
+      </button>
+
+      <!-- Prev/Next (visible when entry active) -->
+      <button
+        v-if="activeId"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] transition-all"
+        :class="canGoPrev ? 'cursor-pointer hover:bg-gray-100' : 'opacity-40 pointer-events-none'"
+        title="上一题 (Ctrl+←)"
+        @click="emit('prev')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        上一题
+      </button>
+      <button
+        v-if="activeId"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] transition-all"
+        :class="canGoNext ? 'cursor-pointer hover:bg-gray-100' : 'opacity-40 pointer-events-none'"
+        title="下一题 (Ctrl+→)"
+        @click="emit('next')"
+      >
+        下一题
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+
+      <!-- Reveal toggle -->
+      <button
+        v-if="activeId"
+        class="btn-icon flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] cursor-pointer transition-all"
+        :class="answersHidden
+          ? 'bg-accent text-white border-accent'
+          : 'border-gray-200 bg-white hover:bg-gray-100'"
+        title="显示/隐藏正确答案"
+        @click="emit('reveal')"
+      >
+        <template v-if="answersHidden">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+          显示正确答案
+        </template>
+        <template v-else>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          隐藏正确答案
+        </template>
+      </button>
+
+      <!-- Delete -->
+      <button
+        v-if="activeId"
+        class="flex items-center gap-1 px-3.5 py-1.5 rounded-md text-[13px] font-medium text-wrong-accent hover:bg-wrong-bg transition-all"
+        @click="emit('delete')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        </svg>
+        删除
+      </button>
+
+      <!-- Import/Export -->
+      <div class="w-px h-5 bg-gray-200" />
+      <button
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] text-gray-600 hover:bg-gray-100 transition-all"
+        title="导出 JSON"
+        @click="emit('exportJSON')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        导出
+      </button>
+      <button
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] text-gray-600 hover:bg-gray-100 transition-all"
+        title="导入 JSON"
+        @click="emit('importJSON')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="3 10 8 15 13 10"/><line x1="8" y1="15" x2="8" y2="3"/>
+        </svg>
+        导入
+      </button>
+    </template>
+
+    <!-- Review mode: progress + reveal button -->
+    <template v-else>
+      <div class="flex-1" />
+      <span class="text-[13px] text-gray-500 font-medium tabular-nums">{{ progress }}</span>
+    </template>
+  </div>
+</template>
