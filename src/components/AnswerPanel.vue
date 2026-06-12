@@ -11,6 +11,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [html: string]
   reveal: []
+  blur: []
 }>()
 
 const bodyRef = ref<HTMLDivElement | null>(null)
@@ -25,6 +26,8 @@ const headerBg = isWrong ? 'bg-[#fef2f2]' : 'bg-[#f0fdf4]'
 const hiddenBg = isWrong ? 'bg-[#fef2f2]' : 'bg-[#f0fdf4]'
 const hiddenColor = isWrong ? 'text-wrong-accent' : 'text-correct-accent'
 
+let suppressInput = false
+
 const showHidden = computed(() => props.type === 'correct' && props.hidden)
 
 // Set initial content when entry changes, without v-html interference
@@ -33,14 +36,18 @@ watch(
   () => {
     nextTick(() => {
       if (bodyRef.value) {
+        suppressInput = true
         bodyRef.value.innerHTML = props.modelValue
+        suppressInput = false
       }
     })
   },
   { immediate: true },
 )
 
+
 function onInput() {
+  if (suppressInput) return
   if (bodyRef.value) {
     emit('update:modelValue', bodyRef.value.innerHTML)
   }
@@ -88,7 +95,7 @@ function onPaste(e: ClipboardEvent) {
     :class="[panelBg, panelBorder]"
   >
     <div
-      class="panel-label flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 border-b flex-shrink-0"
+      class="panel-label flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b flex-shrink-0"
       :class="[headerBg, isWrong ? 'border-wrong-border' : 'border-correct-border']"
     >
       <span class="w-2 h-2 rounded-full" :class="dotClass" />
@@ -103,6 +110,7 @@ function onPaste(e: ClipboardEvent) {
       :data-placeholder="'输入' + label + '…'"
       @input="onInput"
       @paste="onPaste"
+      @blur="emit('blur')"
     />
 
     <div

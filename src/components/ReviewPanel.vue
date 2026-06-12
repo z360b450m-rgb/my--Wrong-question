@@ -38,12 +38,12 @@ function formatTime(ms: number): string {
 <template>
   <div class="flex-1 flex flex-col overflow-hidden p-4 gap-3">
     <!-- No cards due -->
-    <div v-if="dueCount === 0 && !isReviewing" class="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400">
+    <div v-if="dueCount === 0 && !isReviewing" class="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400 dark:text-gray-500">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-30">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
         <polyline points="22 4 12 14.01 9 11.01"/>
       </svg>
-      <p class="text-base font-medium text-gray-500">今日暂无待复习的错题</p>
+      <p class="text-base font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">今日暂无待复习的错题</p>
       <p class="text-xs">所有错题都已按计划安排复习</p>
       <button
         class="mt-2 px-4 py-2 rounded-md bg-accent text-white text-sm hover:brightness-110 transition-all"
@@ -54,12 +54,12 @@ function formatTime(ms: number): string {
     </div>
 
     <!-- Completion -->
-    <div v-else-if="!isReviewing && reviewedToday > 0" class="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400">
+    <div v-else-if="!isReviewing && reviewedToday > 0" class="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400 dark:text-gray-500">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-30">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
         <polyline points="22 4 12 14.01 9 11.01"/>
       </svg>
-      <p class="text-base font-medium text-gray-500">今日复习完成!</p>
+      <p class="text-base font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">今日复习完成!</p>
       <p class="text-xs">已复习 {{ reviewedToday }} 道错题</p>
       <button
         class="mt-2 px-4 py-2 rounded-md bg-accent text-white text-sm hover:brightness-110 transition-all"
@@ -68,7 +68,7 @@ function formatTime(ms: number): string {
         再复习一轮
       </button>
       <button
-        class="px-4 py-2 rounded-md border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-all"
+        class="px-4 py-2 rounded-md border border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-all"
         @click="emit('exitReview')"
       >
         返回编辑
@@ -79,22 +79,22 @@ function formatTime(ms: number): string {
     <template v-else>
       <!-- Progress bar + timer -->
       <div class="flex items-center gap-3 px-1">
-        <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div class="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
           <div
             class="h-full bg-accent rounded-full transition-all duration-300"
             :style="{ width: progress ? (parseInt(progress.split('/')[0]) / parseInt(progress.split('/')[1]) * 100) + '%' : '0%' }"
           />
         </div>
         <span class="text-xs tabular-nums font-medium min-w-[60px] text-right"
-          :class="answered ? 'text-gray-400' : 'text-accent'">
+          :class="answered ? 'text-gray-400 dark:text-gray-500' : 'text-accent'">
           {{ formatTime(elapsedMs) }}
         </span>
-        <span class="text-xs text-gray-400 font-medium tabular-nums">{{ progress }}</span>
+        <span class="text-xs text-gray-400 dark:text-gray-500 font-medium tabular-nums">{{ progress }}</span>
       </div>
 
       <!-- Question -->
-      <div class="flex-shrink-0 bg-white border border-gray-200 rounded-lg flex flex-col overflow-hidden" style="height: 35%">
-        <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 border-b border-gray-200 bg-[#fafbfc] flex-shrink-0">
+      <div class="flex-shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col overflow-hidden" style="height: 35%">
+        <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700 bg-[#fafbfc] dark:bg-gray-800 flex-shrink-0">
           <span class="w-2 h-2 rounded-full bg-accent" />
           题目
           <span v-if="entry.subject" class="ml-auto text-[10px] text-gray-300">{{ entry.subject }}</span>
@@ -104,7 +104,7 @@ function formatTime(ms: number): string {
 
       <!-- Wrong answer -->
       <div class="flex-shrink-0 bg-wrong-bg border border-wrong-border rounded-lg flex flex-col overflow-hidden" style="height: 20%">
-        <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 border-b border-wrong-border bg-[#fef2f2] flex-shrink-0">
+        <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-wrong-border bg-[#fef2f2] dark:bg-red-950 flex-shrink-0">
           <span class="w-2 h-2 rounded-full bg-wrong-accent" />
           错误答案
         </div>
@@ -120,7 +120,7 @@ function formatTime(ms: number): string {
         style="height: 25%"
         @click="!answered && emit('reveal')"
       >
-        <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 border-b border-correct-border bg-[#f0fdf4] flex-shrink-0">
+        <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-correct-border bg-[#f0fdf4] dark:bg-green-950 flex-shrink-0">
           <span class="w-2 h-2 rounded-full bg-correct-accent" />
           正确答案
           <span v-if="!answered" class="ml-auto text-[10px] text-correct-accent">点击查看</span>
@@ -152,7 +152,7 @@ function formatTime(ms: number): string {
 
       <!-- Exit review -->
       <button
-        class="flex-shrink-0 self-center px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+        class="flex-shrink-0 self-center px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-all"
         @click="emit('exitReview')"
       >
         退出复习

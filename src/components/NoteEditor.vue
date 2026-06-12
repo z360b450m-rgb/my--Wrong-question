@@ -11,7 +11,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   update: []
   reveal: []
+  'blur-save': []
 }>()
+
+function onBlur() {
+  emit('blur-save')
+}
 
 // Template refs
 const questionBody = ref<HTMLDivElement | null>(null)
@@ -22,7 +27,10 @@ const answersRowEl = ref<HTMLDivElement | null>(null)
 const resizeH = ref<HTMLDivElement | null>(null)
 const resizeV = ref<HTMLDivElement | null>(null)
 
+let suppressInput = false
+
 function onQuestionInput() {
+  if (suppressInput) return
   if (questionBody.value) {
     props.entry.question = questionBody.value.innerHTML
   }
@@ -70,7 +78,9 @@ watch(
   () => {
     nextTick(() => {
       if (questionBody.value) {
+        suppressInput = true
         questionBody.value.innerHTML = props.entry.question
+        suppressInput = false
       }
     })
   },
@@ -175,34 +185,37 @@ onUnmounted(() => {
     <div class="flex items-center gap-2.5 px-1 flex-wrap">
       <input
         type="text"
-        class="border border-gray-200 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white text-gray-800 focus:border-accent w-[100px]"
+        class="border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 dark:text-gray-100 focus:border-accent w-[100px]"
         placeholder="学科（如：数学）"
         :value="entry.subject"
         @input="entry.subject = ($event.target as HTMLInputElement).value; emit('update')"
+        @blur="onBlur"
       />
       <input
         type="text"
-        class="border border-gray-200 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white text-gray-800 focus:border-accent w-[120px]"
+        class="border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 dark:text-gray-100 focus:border-accent w-[120px]"
         placeholder="来源（如：月考）"
         :value="entry.source"
         @input="entry.source = ($event.target as HTMLInputElement).value; emit('update')"
+        @blur="onBlur"
       />
       <input
         type="text"
-        class="flex-1 min-w-[140px] border border-gray-200 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white text-gray-800 focus:border-accent"
+        class="flex-1 min-w-[140px] border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 dark:text-gray-100 focus:border-accent"
         placeholder="标签，逗号分隔"
         :value="entry.tags.join(', ')"
         @input="entry.tags = ($event.target as HTMLInputElement).value.split(',').map(t => t.trim()).filter(Boolean); emit('update')"
+        @blur="onBlur"
       />
     </div>
 
     <!-- Question panel -->
     <div
       ref="questionPanelEl"
-      class="flex-shrink-0 bg-white border border-gray-200 rounded-lg flex flex-col overflow-hidden"
+      class="flex-shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col overflow-hidden"
       style="height: 35%"
     >
-      <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 border-b border-gray-200 bg-[#fafbfc] flex-shrink-0">
+      <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700 bg-[#fafbfc] dark:bg-gray-800 flex-shrink-0">
         <span class="w-2 h-2 rounded-full bg-accent" />
         题目
       </div>
@@ -213,6 +226,7 @@ onUnmounted(() => {
         data-placeholder="在此输入题目内容…&#10;支持 Markdown 语法，Ctrl+V 粘贴图片"
         @input="onQuestionInput"
         @paste="onQuestionPaste"
+        @blur="onBlur"
       />
     </div>
 
@@ -235,6 +249,7 @@ onUnmounted(() => {
         :entry-id="entry.id"
         @update:model-value="entry.wrongAnswer = $event; emit('update')"
         @reveal="emit('reveal')"
+        @blur="onBlur"
       />
 
       <!-- Resize handle: wrong <-> correct -->
@@ -254,6 +269,7 @@ onUnmounted(() => {
         :entry-id="entry.id"
         @update:model-value="entry.correctAnswer = $event; emit('update')"
         @reveal="emit('reveal')"
+        @blur="onBlur"
       />
     </div>
   </div>

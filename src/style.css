@@ -7,6 +7,8 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
 /* Markdown content styles */
 .md-content img { max-width: 100%; border-radius: 6px; margin: 8px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -15,11 +17,14 @@
 .md-content pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
 .md-content code { font-family: "JetBrains Mono", "Fira Code", monospace; font-size: 0.9em; }
 .md-content :not(pre) > code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; }
+.dark .md-content :not(pre) > code { background: #374151; color: #e5e7eb; }
 .md-content blockquote { border-left: 3px solid #6366f1; padding-left: 12px; color: #6b7280; margin: 8px 0; }
 .md-content ul, .md-content ol { padding-left: 20px; margin: 4px 0; }
 .md-content table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
 .md-content th, .md-content td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; }
 .md-content th { background: #f9fafb; font-weight: 600; }
+.dark .md-content th { background: #1f2937; border-color: #374151; }
+.dark .md-content td { border-color: #374151; }
 
 /* Toast animation */
 .toast-enter-active { animation: toast-in 0.3s ease; }

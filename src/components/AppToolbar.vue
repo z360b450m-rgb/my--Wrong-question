@@ -10,6 +10,7 @@ defineProps<{
   progress: string
   drawingEnabled: boolean
   statsOpen: boolean
+  isDirty: boolean
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +20,7 @@ const emit = defineEmits<{
   next: []
   reveal: []
   delete: []
+  save: []
   toggleMode: []
   toggleDrawing: []
   toggleStats: []
@@ -28,7 +30,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center gap-2.5 px-5 py-3 bg-white border-b border-gray-200">
+  <div class="flex items-center gap-2.5 px-5 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
     <!-- Mode toggle -->
     <button
       class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all"
@@ -44,7 +46,7 @@ const emit = defineEmits<{
         <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
       </svg>
       {{ mode === 'review' ? '退出复习' : '复习模式' }}
-      <span v-if="mode === 'edit' && dueCount > 0" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">{{ dueCount }}</span>
+      <span v-if="mode === 'edit' && dueCount > 0" class="bg-red-50 dark:bg-red-9500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">{{ dueCount }}</span>
     </button>
 
     <!-- Drawing toggle -->
@@ -83,14 +85,14 @@ const emit = defineEmits<{
     <!-- Edit mode controls -->
     <template v-if="mode === 'edit'">
       <!-- Search -->
-      <div class="flex-1 flex items-center gap-2 bg-[#f7f8fa] rounded-md px-3 py-1.5">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 flex-shrink-0">
+      <div class="flex-1 flex items-center gap-2 bg-[#f7f8fa] dark:bg-gray-800 rounded-md px-3 py-1.5">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 dark:text-gray-500 flex-shrink-0">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input
           type="text"
           placeholder="搜索错题..."
-          class="flex-1 border-none bg-transparent text-[13px] outline-none text-gray-800"
+          class="flex-1 border-none bg-transparent text-[13px] outline-none text-gray-800 dark:text-gray-100"
           :value="searchQuery"
           @input="emit('search', ($event.target as HTMLInputElement).value)"
         />
@@ -110,8 +112,8 @@ const emit = defineEmits<{
       <!-- Prev/Next (visible when entry active) -->
       <button
         v-if="activeId"
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] transition-all"
-        :class="canGoPrev ? 'cursor-pointer hover:bg-gray-100' : 'opacity-40 pointer-events-none'"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] transition-all"
+        :class="canGoPrev ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800' : 'opacity-40 pointer-events-none'"
         title="上一题 (Ctrl+←)"
         @click="emit('prev')"
       >
@@ -122,8 +124,8 @@ const emit = defineEmits<{
       </button>
       <button
         v-if="activeId"
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] transition-all"
-        :class="canGoNext ? 'cursor-pointer hover:bg-gray-100' : 'opacity-40 pointer-events-none'"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] transition-all"
+        :class="canGoNext ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800' : 'opacity-40 pointer-events-none'"
         title="下一题 (Ctrl+→)"
         @click="emit('next')"
       >
@@ -169,10 +171,28 @@ const emit = defineEmits<{
         删除
       </button>
 
-      <!-- Import/Export -->
-      <div class="w-px h-5 bg-gray-200" />
+      <!-- Save -->
       <button
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] text-gray-600 hover:bg-gray-100 transition-all"
+        v-if="activeId"
+        class="flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all"
+        :class="isDirty
+          ? 'bg-accent text-white hover:brightness-110 cursor-pointer'
+          : 'border border-gray-200 bg-white text-gray-300 cursor-not-allowed'"
+        :disabled="!isDirty"
+        title="保存 (Ctrl+S)"
+        @click="isDirty && emit('save')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+        </svg>
+        保存
+        <span v-if="isDirty" class="w-1.5 h-1.5 rounded-full bg-white dark:bg-gray-900 ml-0.5" />
+      </button>
+
+      <!-- Import/Export -->
+      <div class="w-px h-5 bg-gray-200 dark:bg-gray-700" />
+      <button
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
         title="导出 JSON"
         @click="emit('exportJSON')"
       >
@@ -182,7 +202,7 @@ const emit = defineEmits<{
         导出
       </button>
       <button
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white text-[13px] text-gray-600 hover:bg-gray-100 transition-all"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
         title="导入 JSON"
         @click="emit('importJSON')"
       >
@@ -196,7 +216,7 @@ const emit = defineEmits<{
     <!-- Review mode: progress + reveal button -->
     <template v-else>
       <div class="flex-1" />
-      <span class="text-[13px] text-gray-500 font-medium tabular-nums">{{ progress }}</span>
+      <span class="text-[13px] text-gray-500 dark:text-gray-400 font-medium tabular-nums">{{ progress }}</span>
     </template>
   </div>
 </template>

@@ -1,8 +1,9 @@
 import type { NoteEntry } from '@/types'
 
 const DB_NAME = 'CuotiDB'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE = 'entries'
+const SNAP_STORE = 'snapshots'
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -14,6 +15,9 @@ function openDB(): Promise<IDBDatabase> {
         store.createIndex('updatedAt', 'updatedAt', { unique: false })
         store.createIndex('subject', 'subject', { unique: false })
       }
+      if (!db.objectStoreNames.contains(SNAP_STORE)) {
+        db.createObjectStore(SNAP_STORE, { keyPath: 'entryId' })
+      }
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -23,12 +27,13 @@ function openDB(): Promise<IDBDatabase> {
 function tx<T>(
   mode: IDBTransactionMode,
   fn: (store: IDBObjectStore) => IDBRequest<T>,
+  storeName = STORE,
 ): Promise<T> {
   return openDB().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const t = db.transaction(STORE, mode)
-        const store = t.objectStore(STORE)
+        const t = db.transaction(storeName, mode)
+        const store = t.objectStore(storeName)
         const req = fn(store)
         req.onsuccess = () => resolve(req.result)
         req.onerror = () => reject(req.error)
@@ -51,5 +56,26 @@ export const db = {
 
   delete(id: string): Promise<void> {
     return tx('readwrite', (s) => s.delete(id)).then(() => undefined)
+  },
+
+  // Snapshot store for crash protection
+  putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
+    return tx('readwrite', (s) => s.put({ entryId, data, savedAt: Date.now() }), SNAP_STORE).then(() => undefined)
+  },
+
+  getSnapshot(entryId: string): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
+    return tx('readonly', (s) => s.get(entryId), SNAP_STORE)
+  },
+
+  getAllSnapshots(): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
+    return tx('readonly', (s) => s.getAll(), SNAP_STORE)
+  },
+
+  deleteSnapshot(entryId: string): Promise<void> {
+    return tx('readwrite', (s) => s.delete(entryId), SNAP_STORE).then(() => undefined)
+  },
+
+  deleteAllSnapshots(): Promise<void> {
+    return tx('readwrite', (s) => s.clear(), SNAP_STORE).then(() => undefined)
   },
 }

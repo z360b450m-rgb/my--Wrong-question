@@ -1,6 +1,11 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
 import { db } from '@/services/db'
+
+// IndexedDB can't store Vue Proxy objects (structured clone error)
+function toPlain<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj))
+}
 
 function genId(): string {
   return 'cuoti_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
@@ -28,24 +33,154 @@ function nextPlaceholderTitle(entries: NoteEntry[]): string {
   return '无题目 (' + (max + 1) + ')'
 }
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null
-
 export function useEntries() {
   const entries = ref<NoteEntry[]>([])
   const activeId = ref<string | null>(null)
   const answersHidden = ref(false)
   const toastMsg = ref('')
   const showDeleteModal = ref(false)
+  const isDirty = ref(false)
 
   const activeEntry = computed<NoteEntry | undefined>(() =>
     entries.value.find((e) => e.id === activeId.value),
   )
+
+  // Batch selection
+  const selectedIds = ref<Set<string>>(new Set())
+  const lastSelectedIdx = ref<number>(-1)
+
+  function isSelected(id: string): boolean {
+    return selectedIds.value.has(id)
+  }
+
+  function toggleSelect(id: string) {
+    const s = selectedIds.value
+    if (s.has(id)) {
+      s.delete(id)
+    } else {
+      s.add(id)
+    }
+    selectedIds.value = new Set(s)
+  }
+
+  function selectRange(ids: string[], fromIdx: number, toIdx: number) {
+    const s = new Set(selectedIds.value)
+    const start = Math.min(fromIdx, toIdx)
+    const end = Math.max(fromIdx, toIdx)
+    for (let i = start; i <= end; i++) {
+      s.add(ids[i])
+    }
+    selectedIds.value = s
+    lastSelectedIdx.value = toIdx
+  }
+
+  function selectAll(ids: string[]) {
+    selectedIds.value = new Set(ids)
+  }
+
+  function deselectAll() {
+    selectedIds.value = new Set()
+    lastSelectedIdx.value = -1
+  }
+
+  const selectedCount = computed(() => selectedIds.value.size)
+
+  // Batch delete
+  async function batchDelete(ids: string[]) {
+    for (const id of ids) {
+      await db.delete(id)
+      await db.deleteSnapshot(id)
+    }
+    const idSet = new Set(ids)
+    entries.value = entries.value.filter((e) => !idSet.has(e.id))
+    if (activeId.value && idSet.has(activeId.value)) {
+      activeId.value = null
+      isDirty.value = false
+    }
+    deselectAll()
+  }
+
+  // Batch tag
+  async function batchTag(ids: string[], tags: string[]) {
+    const now = Date.now()
+    for (const id of ids) {
+      const entry = entries.value.find((e) => e.id === id)
+      if (entry) {
+        const existing = new Set(entry.tags)
+        for (const t of tags) existing.add(t)
+        entry.tags = Array.from(existing)
+        entry.updatedAt = now
+        await db.put(toPlain(entry))
+      }
+    }
+    deselectAll()
+  }
+
+  // Batch export
+  function batchExport(ids: string[]) {
+    const selected = entries.value.filter((e) => ids.includes(e.id))
+    const json = JSON.stringify(selected, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `错题本_${new Date().toISOString().slice(0, 10)}.json`
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showToast(`已导出 ${ids.length} 条错题`)
+    deselectAll()
+  }
+
+  // Periodic crash-protection snapshot (every 1s while dirty)
+  let snapshotTimer: ReturnType<typeof setInterval> | null = null
+
+  function startSnapshotTimer() {
+    if (snapshotTimer) return
+    snapshotTimer = setInterval(() => {
+      if (isDirty.value && activeId.value) {
+        const entry = entries.value.find((e) => e.id === activeId.value)
+        if (entry) db.putSnapshot(activeId.value, toPlain(entry))
+      }
+    }, 1000)
+  }
+
+  onUnmounted(() => {
+    if (snapshotTimer) clearInterval(snapshotTimer)
+  })
 
   async function loadEntries() {
     try {
       entries.value = await db.getAll()
     } catch {
       entries.value = []
+    }
+  }
+
+  async function checkCrashRecovery(): Promise<NoteEntry[]> {
+    try {
+      const snaps = await db.getAllSnapshots()
+      if (snaps.length === 0) return []
+      const recovered: NoteEntry[] = []
+      for (const snap of snaps) {
+        const existing = entries.value.find((e) => e.id === snap.entryId)
+        if (existing) {
+          // Restore snapshot data into existing entry
+          Object.assign(existing, snap.data, { updatedAt: snap.data.updatedAt })
+          await db.put(toPlain(existing))
+        } else {
+          // Entry was never saved — restore it
+          entries.value.push(snap.data)
+          await db.put(toPlain(snap.data))
+          recovered.push(snap.data)
+        }
+      }
+      await db.deleteAllSnapshots()
+      return recovered
+    } catch {
+      return []
     }
   }
 
@@ -62,60 +197,77 @@ export function useEntries() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
-    await db.put(entry)
+    await db.put(toPlain(entry))
     entries.value.unshift(entry)
     activeId.value = entry.id
     answersHidden.value = false
+    isDirty.value = false
+    startSnapshotTimer()
     showToast('新错题已创建')
   }
 
+  function loadEntry(id: string) {
+    activeId.value = id
+  }
 
-  async function doSave() {
+  // Call this on every content mutation — marks dirty, does NOT save to DB
+  function markDirty() {
+    isDirty.value = true
+    startSnapshotTimer()
+  }
+
+  // Manual save — persists to DB, clears dirty flag, removes snapshot
+  async function saveEntry() {
     if (!activeId.value) return
     const entry = entries.value.find((e) => e.id === activeId.value)
     if (!entry) return
 
-    // Auto-derive title from first question content
     const qt = stripMd(entry.question)
     if (qt && isPlaceholderTitle(entry.title)) {
       entry.title = qt.slice(0, 40)
     }
 
     entry.updatedAt = Date.now()
-    await db.put(entry)
+    try {
+      await db.put(toPlain(entry))
+    } catch (err) {
+      console.error('Save failed', err)
+      return
+    }
+    try { await db.deleteSnapshot(activeId.value) } catch { /* ok if missing */ }
+    isDirty.value = false
+    showToast('已保存')
   }
 
-  function saveCurrent() {
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = setTimeout(doSave, 400)
+  // Discard changes — reload from DB
+  async function discardChanges() {
+    if (!activeId.value) return
+    const saved = await db.get(activeId.value)
+    if (saved) {
+      const idx = entries.value.findIndex((e) => e.id === activeId.value)
+      if (idx !== -1) entries.value[idx] = saved
+    }
+    await db.deleteSnapshot(activeId.value)
+    isDirty.value = false
   }
 
-  function flushSave() {
-    if (saveTimer) {
-      clearTimeout(saveTimer)
-      saveTimer = null
-      doSave()
+  // Snapshot save (for crash protection, called periodically)
+  async function snapshotSave() {
+    if (!activeId.value || !isDirty.value) return
+    const entry = entries.value.find((e) => e.id === activeId.value)
+    if (entry) {
+      entry.updatedAt = Date.now()
+      try { await db.putSnapshot(activeId.value, toPlain(entry)) } catch { /* ignore */ }
     }
   }
-
-  // Flush pending save before switching entries or closing page
-  function loadEntry(id: string) {
-    flushSave()
-    activeId.value = id
-  }
-
-  const onBeforeUnload = () => flushSave()
-  onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
-  onUnmounted(() => {
-    window.removeEventListener('beforeunload', onBeforeUnload)
-    if (saveTimer) clearTimeout(saveTimer)
-  })
 
   async function deleteCurrent() {
     if (!activeId.value) return
     await db.delete(activeId.value)
+    await db.deleteSnapshot(activeId.value)
     entries.value = entries.value.filter((e) => e.id !== activeId.value)
     activeId.value = null
+    isDirty.value = false
     showDeleteModal.value = false
     showToast('错题已删除')
   }
@@ -125,7 +277,7 @@ export function useEntries() {
     if (!entry) return
     entry.title = newTitle
     entry.updatedAt = Date.now()
-    await db.put(entry)
+    await db.put(toPlain(entry))
   }
 
   function showToast(msg: string) {
@@ -151,7 +303,7 @@ export function useEntries() {
       if (entry) {
         entry.sortOrder = idx
         entry.updatedAt = now
-        updates.push(db.put(entry))
+        updates.push(db.put(toPlain(entry)))
       }
     })
     await Promise.all(updates)
@@ -162,18 +314,34 @@ export function useEntries() {
     activeId,
     activeEntry,
     answersHidden,
+    isDirty,
     toastMsg,
     showDeleteModal,
+    selectedIds,
+    selectedCount,
     loadEntries,
+    checkCrashRecovery,
     createEntry,
     loadEntry,
-    saveCurrent,
+    markDirty,
+    saveEntry,
+    discardChanges,
+    snapshotSave,
     deleteCurrent,
     updateEntryTitle,
     showToast,
     openDeleteModal,
     closeDeleteModal,
     reorderEntries,
+    // batch
+    isSelected,
+    toggleSelect,
+    selectRange,
+    selectAll,
+    deselectAll,
+    batchDelete,
+    batchTag,
+    batchExport,
     // utility exports for components
     stripMd,
     isPlaceholderTitle,
