@@ -87,11 +87,16 @@ const {
   drawingEnabled,
   activeTool,
   penColor,
+  canUndo,
+  canRedo,
   toggleDrawing,
   setTool,
   setColor,
   clearCanvas,
+  undo,
+  redo,
   mountCanvas,
+  setCanvasParent,
 } = useDrawing()
 
 const { exportJSON, importJSON } = useBackup(entries, showToast)
@@ -130,6 +135,8 @@ onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
 onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
 provide('toast', showToast)
+provide('setCanvasParent', setCanvasParent)
+provide('drawingEnabled', drawingEnabled)
 
 useKeyboard({
   onCreate: () => handleCreate(),
@@ -148,6 +155,9 @@ useKeyboard({
   answered,
   revealAnswer,
   rateCard,
+  drawingEnabled,
+  onUndo: () => undo(),
+  onRedo: () => redo(),
 })
 
 function navigate(dir: number) {
@@ -367,28 +377,30 @@ loadEntries()
           :reviewed-today="reviewedToday"
           :is-reviewing="isReviewing"
           @reveal="revealAnswer"
-          @rate="(q: number) => rateCard(q)"
+          @rate="(q: number, note: string) => rateCard(q, note)"
           @start-review="(force: boolean) => handleStartReview(force)"
           @exit-review="handleExitReview"
         />
 
-        <div v-else class="flex-1 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 gap-3">
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-25">
-            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-          </svg>
-          <p class="text-sm">选择或创建一条错题</p>
-          <span class="text-xs opacity-70">Ctrl+N 快速新建 · Ctrl+S 保存 · 支持 Markdown · 可直接粘贴图片</span>
+        <div v-else class="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-50/50 dark:bg-gray-900/50">
+          <div class="w-24 h-24 rounded-full bg-accent/10 dark:bg-accent/20 flex items-center justify-center text-accent">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <h2 class="text-lg font-bold text-gray-700 dark:text-gray-200">开始记录你的知识盲点</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Ctrl+N 快速新建 · 支持 Markdown · 可直接粘贴图片</p>
         </div>
       </div>
 
       <!-- Floating drawing toolbar -->
       <div
         v-if="drawingEnabled"
-        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 px-2.5 py-2"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 px-2.5 py-2"
       >
         <button
-          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-          :class="activeTool === 'pen' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300'"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-95"
+          :class="activeTool === 'pen' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300'"
           @click="setTool('pen')"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -401,7 +413,7 @@ loadEntries()
         <button
           v-for="c in PEN_COLORS"
           :key="c.code"
-          class="w-6 h-6 rounded-full transition-all border-2 flex-shrink-0"
+          class="w-6 h-6 rounded-full transition-all duration-200 ease-out active:scale-90 border-2 flex-shrink-0"
           :class="penColor === c.code && activeTool === 'pen' ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105'"
           :style="{ backgroundColor: c.code }"
           :title="c.name"
@@ -410,8 +422,8 @@ loadEntries()
 
         <div class="w-px h-4 bg-gray-200" />
         <button
-          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-          :class="activeTool === 'eraser' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300'"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-95"
+          :class="activeTool === 'eraser' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300'"
           @click="setTool('eraser')"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -422,7 +434,32 @@ loadEntries()
 
         <div class="w-px h-4 bg-gray-200" />
         <button
-          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900 dark:bg-red-950 transition-all font-medium"
+          class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-95"
+          :class="canUndo ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' : 'text-gray-300 dark:text-gray-600 cursor-default'"
+          :disabled="!canUndo"
+          @click="undo()"
+          title="撤销 Ctrl+Z"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+        </button>
+        <button
+          class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-95"
+          :class="canRedo ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800' : 'text-gray-300 dark:text-gray-600 cursor-default'"
+          :disabled="!canRedo"
+          @click="redo()"
+          title="重做 Ctrl+Y"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/>
+          </svg>
+        </button>
+        <div class="w-px h-4 bg-gray-200" />
+        <button
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900 dark:bg-red-950 transition-all duration-200 ease-out active:scale-95 font-medium"
           @click="clearCanvas"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -445,7 +482,7 @@ loadEntries()
       class="fixed inset-0 z-50 flex items-center justify-center"
     >
       <div class="absolute inset-0 bg-black/30" @click="cancelBatchDelete" />
-      <div class="relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 w-[360px] max-w-[90vw]">
+      <div class="relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 p-6 w-[360px] max-w-[90vw]">
         <div class="flex items-center gap-2.5 mb-3">
           <div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5">
@@ -453,19 +490,19 @@ loadEntries()
             </svg>
           </div>
           <div>
-            <h3 class="text-[15px] font-bold text-gray-800 dark:text-gray-100 dark:text-gray-100">批量删除</h3>
-            <p class="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">确定要删除选中的 {{ selectedCount }} 条错题吗？此操作不可撤销。</p>
+            <h3 class="text-[15px] font-bold text-gray-800 dark:text-gray-100">批量删除</h3>
+            <p class="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">确定要删除选中的 {{ selectedCount }} 条错题吗？此操作不可撤销。</p>
           </div>
         </div>
         <div class="flex justify-end gap-2 mt-5">
           <button
-            class="px-4 py-2 rounded-lg text-[13px] font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-colors"
+            class="px-4 py-2 rounded-lg text-[13px] font-medium border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
             @click="cancelBatchDelete"
           >
             取消
           </button>
           <button
-            class="px-4 py-2 rounded-lg text-[13px] font-medium bg-red-50 dark:bg-red-9500 text-white hover:bg-red-600 transition-colors"
+            class="px-4 py-2 rounded-lg text-[13px] font-medium bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-all duration-200 ease-out active:scale-95"
             @click="confirmBatchDelete"
           >
             删除 {{ selectedCount }} 条
@@ -493,7 +530,7 @@ loadEntries()
 
     <!-- Dark mode toggle (bottom-left) -->
     <button
-      class="fixed bottom-6 left-6 z-50 flex items-center justify-center w-9 h-9 rounded-full shadow-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:scale-110 transition-all"
+      class="fixed bottom-6 left-6 z-50 flex items-center justify-center w-9 h-9 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:scale-110 active:scale-90 transition-all duration-200 ease-out shadow-sm"
       title="切换暗色模式"
       @click="toggleDark"
     >

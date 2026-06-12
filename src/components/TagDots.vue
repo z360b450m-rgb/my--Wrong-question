@@ -21,7 +21,7 @@ const emit = defineEmits<{
       <button
         v-for="[tag, count] in Object.entries(tagMap).sort((a, b) => b[1] - a[1])"
         :key="tag"
-        class="tag-dot text-[11px] px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-pointer border-none transition-colors hover:bg-accent-light hover:text-accent"
+        class="tag-dot text-[11px] px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-pointer border-none transition-all duration-200 ease-out active:scale-95 hover:bg-accent-light hover:text-accent"
         :class="{ '!bg-accent !text-white': activeTag === tag }"
         @click="emit('filter', tag)"
       >

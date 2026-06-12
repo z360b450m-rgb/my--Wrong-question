@@ -18,13 +18,25 @@ const bodyRef = ref<HTMLDivElement | null>(null)
 
 const isWrong = props.type === 'wrong'
 const label = isWrong ? '错误答案' : '正确答案'
-const dotClass = isWrong ? 'bg-wrong-accent' : 'bg-correct-accent'
+const dotClass = isWrong ? 'bg-red-400' : 'bg-emerald-400'
 
-const panelBg = isWrong ? 'bg-wrong-bg' : 'bg-correct-bg'
-const panelBorder = isWrong ? 'border-wrong-border' : 'border-correct-border'
-const headerBg = isWrong ? 'bg-[#fef2f2]' : 'bg-[#f0fdf4]'
-const hiddenBg = isWrong ? 'bg-[#fef2f2]' : 'bg-[#f0fdf4]'
-const hiddenColor = isWrong ? 'text-wrong-accent' : 'text-correct-accent'
+const panelBg = isWrong
+  ? 'bg-red-50 border-red-100 dark:bg-red-500/10 dark:border-red-500/20'
+  : 'bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20'
+const panelBorder = ''
+const headerBg = isWrong
+  ? 'bg-red-50 dark:bg-red-500/10'
+  : 'bg-emerald-50 dark:bg-emerald-500/10'
+const headerBorder = isWrong
+  ? 'border-red-100 dark:border-red-500/20'
+  : 'border-emerald-100 dark:border-emerald-500/20'
+const headerText = isWrong
+  ? 'text-red-600 dark:text-red-400'
+  : 'text-emerald-600 dark:text-emerald-400'
+const hiddenBg = isWrong
+  ? 'bg-red-50 dark:bg-red-500/10'
+  : 'bg-emerald-50 dark:bg-emerald-500/10'
+const hiddenColor = isWrong ? 'text-red-500 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400'
 
 let suppressInput = false
 
@@ -92,11 +104,11 @@ function onPaste(e: ClipboardEvent) {
 <template>
   <div
     class="answer-panel flex-1 flex flex-col overflow-hidden rounded-lg border"
-    :class="[panelBg, panelBorder]"
+    :class="panelBg"
   >
     <div
-      class="panel-label flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b flex-shrink-0"
-      :class="[headerBg, isWrong ? 'border-wrong-border' : 'border-correct-border']"
+      class="panel-label flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border-b flex-shrink-0"
+      :class="[headerBg, headerBorder, headerText]"
     >
       <span class="w-2 h-2 rounded-full" :class="dotClass" />
       {{ label }}
@@ -105,7 +117,7 @@ function onPaste(e: ClipboardEvent) {
     <div
       v-if="!showHidden"
       ref="bodyRef"
-      class="panel-body flex-1 px-3.5 py-3 overflow-y-auto text-sm leading-relaxed md-content outline-none"
+      class="panel-body flex-1 px-3.5 py-3 overflow-y-auto text-sm leading-relaxed md-content outline-none text-gray-800 dark:text-gray-200"
       contenteditable="true"
       :data-placeholder="'输入' + label + '…'"
       @input="onInput"
@@ -115,7 +127,7 @@ function onPaste(e: ClipboardEvent) {
 
     <div
       v-else
-      class="flex-1 flex items-center justify-center cursor-pointer select-none rounded-b-lg transition-colors hover:brightness-[0.97]"
+      class="flex-1 flex items-center justify-center cursor-pointer select-none rounded-b-lg transition-all duration-200 ease-out active:scale-[0.98]"
       :class="[hiddenBg, hiddenColor]"
       @click="emit('reveal')"
     >
@@ -128,5 +140,8 @@ function onPaste(e: ClipboardEvent) {
 .panel-body:empty::before {
   content: attr(data-placeholder);
   color: #cbd5e1;
+}
+.dark .panel-body:empty::before {
+  color: #4b5563;
 }
 </style>

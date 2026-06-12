@@ -17,13 +17,13 @@ const emit = defineEmits<{
       <p class="text-gray-400 dark:text-gray-500 text-sm mb-4">确定要删除这道错题吗？此操作不可撤销。</p>
       <div class="flex gap-2 justify-end">
         <button
-          class="px-3.5 py-1.5 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors"
+          class="px-3.5 py-1.5 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800 transition-all duration-200 ease-out active:scale-95"
           @click="emit('cancel')"
         >
           取消
         </button>
         <button
-          class="px-3.5 py-1.5 rounded-md text-sm font-medium bg-red-50 dark:bg-red-9500 text-white transition-colors hover:brightness-110"
+          class="px-3.5 py-1.5 rounded-md text-sm font-medium bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-all duration-200 ease-out active:scale-95"
           @click="emit('confirm')"
         >
           确认删除

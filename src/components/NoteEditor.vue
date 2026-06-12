@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onUnmounted, onMounted, nextTick, inject, type Ref } from 'vue'
 import type { NoteEntry } from '@/types'
 import AnswerPanel from './AnswerPanel.vue'
 
@@ -20,6 +20,7 @@ function onBlur() {
 
 // Template refs
 const questionBody = ref<HTMLDivElement | null>(null)
+const questionScroll = ref<HTMLDivElement | null>(null)
 const wrongPanelEl = ref<HTMLDivElement | null>(null)
 const correctPanelEl = ref<HTMLDivElement | null>(null)
 const questionPanelEl = ref<HTMLDivElement | null>(null)
@@ -72,6 +73,9 @@ function onQuestionPaste(e: ClipboardEvent) {
   }
 }
 
+const setCanvasParent = inject<(el: HTMLElement | null) => void>('setCanvasParent', () => {})
+const drawingEnabled = inject<Ref<boolean>>('drawingEnabled', ref(false))
+
 // Set question content when entry changes, without v-html interference
 watch(
   () => props.entry.id,
@@ -81,6 +85,7 @@ watch(
         suppressInput = true
         questionBody.value.innerHTML = props.entry.question
         suppressInput = false
+        setCanvasParent(questionScroll.value)
       }
     })
   },
@@ -185,7 +190,7 @@ onUnmounted(() => {
     <div class="flex items-center gap-2.5 px-1 flex-wrap">
       <input
         type="text"
-        class="border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 dark:text-gray-100 focus:border-accent w-[100px]"
+        class="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg px-2.5 py-1.5 text-xs outline-none text-gray-800 dark:text-gray-100 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all w-[100px]"
         placeholder="学科（如：数学）"
         :value="entry.subject"
         @input="entry.subject = ($event.target as HTMLInputElement).value; emit('update')"
@@ -193,7 +198,7 @@ onUnmounted(() => {
       />
       <input
         type="text"
-        class="border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 dark:text-gray-100 focus:border-accent w-[120px]"
+        class="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg px-2.5 py-1.5 text-xs outline-none text-gray-800 dark:text-gray-100 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all w-[120px]"
         placeholder="来源（如：月考）"
         :value="entry.source"
         @input="entry.source = ($event.target as HTMLInputElement).value; emit('update')"
@@ -201,7 +206,7 @@ onUnmounted(() => {
       />
       <input
         type="text"
-        class="flex-1 min-w-[140px] border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 dark:text-gray-100 focus:border-accent"
+        class="flex-1 min-w-[140px] border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg px-2.5 py-1.5 text-xs outline-none text-gray-800 dark:text-gray-100 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
         placeholder="标签，逗号分隔"
         :value="entry.tags.join(', ')"
         @input="entry.tags = ($event.target as HTMLInputElement).value.split(',').map(t => t.trim()).filter(Boolean); emit('update')"
@@ -212,22 +217,26 @@ onUnmounted(() => {
     <!-- Question panel -->
     <div
       ref="questionPanelEl"
-      class="flex-shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col overflow-hidden"
+      class="flex-shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden"
       style="height: 35%"
     >
-      <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700 bg-[#fafbfc] dark:bg-gray-800 flex-shrink-0">
+      <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800 bg-[#fafbfc] dark:bg-gray-800 flex-shrink-0">
         <span class="w-2 h-2 rounded-full bg-accent" />
         题目
       </div>
-      <div
-        ref="questionBody"
-        class="flex-1 px-3.5 py-3 overflow-y-auto text-sm leading-relaxed md-content outline-none min-h-[60px]"
-        contenteditable="true"
-        data-placeholder="在此输入题目内容…&#10;支持 Markdown 语法，Ctrl+V 粘贴图片"
-        @input="onQuestionInput"
-        @paste="onQuestionPaste"
-        @blur="onBlur"
-      />
+      <div class="flex-1 overflow-y-auto">
+        <div ref="questionScroll" class="relative">
+          <div
+            ref="questionBody"
+            class="px-3.5 py-3 text-sm leading-relaxed md-content outline-none min-h-[60px]"
+            :contenteditable="drawingEnabled ? 'false' : 'true'"
+          data-placeholder="在此输入题目内容…&#10;支持 Markdown 语法，Ctrl+V 粘贴图片"
+          @input="onQuestionInput"
+          @paste="onQuestionPaste"
+          @blur="onBlur"
+        />
+        </div>
+      </div>
     </div>
 
     <!-- Resize handle: question <-> answers -->
@@ -236,7 +245,7 @@ onUnmounted(() => {
       class="resize-h flex-shrink-0 h-2 cursor-row-resize bg-transparent hover:bg-accent transition-colors relative -my-0.5"
       @mousedown="startResize($event, 'h')"
     >
-      <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-0.5 rounded-sm bg-gray-200 resize-h-bar" />
+      <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-0.5 rounded-sm bg-gray-200 dark:bg-gray-600 resize-h-bar" />
     </div>
 
     <!-- Answers row -->
@@ -258,7 +267,7 @@ onUnmounted(() => {
         class="resize-v flex-shrink-0 w-2 cursor-col-resize bg-transparent hover:bg-accent transition-colors relative -mx-0.5"
         @mousedown="startResize($event, 'v')"
       >
-        <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-10 rounded-sm bg-gray-200 resize-v-bar" />
+        <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-10 rounded-sm bg-gray-200 dark:bg-gray-600 resize-v-bar" />
       </div>
 
       <AnswerPanel
@@ -277,15 +286,24 @@ onUnmounted(() => {
 
 <style scoped>
 .resize-h-bar { background: #e5e7eb; }
+.dark .resize-h-bar { background: #4b5563; }
 .resize-h:hover .resize-h-bar,
 .resize-h.dragging .resize-h-bar { background: white; }
+.dark .resize-h:hover .resize-h-bar,
+.dark .resize-h.dragging .resize-h-bar { background: #6366f1; }
 
 .resize-v-bar { background: #e5e7eb; }
+.dark .resize-v-bar { background: #4b5563; }
 .resize-v:hover .resize-v-bar,
 .resize-v.dragging .resize-v-bar { background: white; }
+.dark .resize-v:hover .resize-v-bar,
+.dark .resize-v.dragging .resize-v-bar { background: #6366f1; }
 
 .panel-body:empty::before {
   content: attr(data-placeholder);
   color: #cbd5e1;
+}
+.dark .panel-body:empty::before {
+  color: #4b5563;
 }
 </style>

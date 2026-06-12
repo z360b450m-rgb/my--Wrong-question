@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, computed } from 'vue'
+import { ref, nextTick, computed, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SortKey } from '@/composables/useFilter'
 
@@ -148,24 +148,38 @@ function onItemClick(e: MouseEvent, id: string, idx: number) {
 
 // Inline rename
 const renamingId = ref<string | null>(null)
-const renameInput = ref<HTMLInputElement | null>(null)
+
+function getRenameInput(): HTMLInputElement | null {
+  return document.querySelector('input[data-renaming]')
+}
+
+function onDocumentMouseDown(e: MouseEvent) {
+  if (!renamingId.value) return
+  const input = getRenameInput()
+  if (input && input.contains(e.target as Node)) return
+  const entry = props.entries.find(en => en.id === renamingId.value)
+  if (entry) finishRename(entry, true)
+}
 
 function startRename(id: string) {
   renamingId.value = id
+  document.addEventListener('mousedown', onDocumentMouseDown)
   nextTick(() => {
-    renameInput.value?.focus()
-    renameInput.value?.select()
+    const input = getRenameInput()
+    input?.focus()
+    input?.select()
   })
 }
 
 function finishRename(entry: NoteEntry, save: boolean) {
-  const input = renameInput.value
+  const input = getRenameInput()
   if (!input || renamingId.value !== entry.id) return
   const newTitle = input.value.trim()
   if (save && newTitle && newTitle !== entry.title) {
     emit('rename', entry.id, newTitle)
   }
   renamingId.value = null
+  document.removeEventListener('mousedown', onDocumentMouseDown)
 }
 
 function onRenameKeydown(e: KeyboardEvent, entry: NoteEntry) {
@@ -178,6 +192,10 @@ function onRenameKeydown(e: KeyboardEvent, entry: NoteEntry) {
     finishRename(entry, false)
   }
 }
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onDocumentMouseDown)
+})
 </script>
 
 <template>
@@ -187,13 +205,13 @@ function onRenameKeydown(e: KeyboardEvent, entry: NoteEntry) {
   <div
     v-for="(entry, idx) in entries"
     :key="entry.id"
-    class="entry-item flex items-center gap-1 px-2 py-2.5 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800 border-l-[3px] select-none"
+    class="entry-item flex items-center gap-1 mx-2 mb-0.5 px-2 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] select-none rounded-lg"
     :class="{
-      '!bg-accent-light !border-l-accent': entry.id === activeId,
-      'border-l-[#a78bfa] bg-purple-50/50': selectedIds.has(entry.id) && entry.id !== activeId,
+      '!bg-accent-light dark:!bg-indigo-950 !border-l-accent shadow-sm': entry.id === activeId,
+      'border-l-[#a78bfa] bg-purple-50/50 dark:bg-purple-950/30': selectedIds.has(entry.id) && entry.id !== activeId,
       'opacity-50': isCustomSort && dragId === entry.id,
       'border-t-2 border-t-accent': isCustomSort && dragOverId === entry.id,
-      'border-l-transparent hover:bg-gray-50': !selectedIds.has(entry.id) && entry.id !== activeId,
+      'border-l-transparent hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-[1px]': !selectedIds.has(entry.id) && entry.id !== activeId,
     }"
     :title="selectedIds.has(entry.id) ? undefined : 'Ctrl+点击选择 · Shift+点击范围选择'"
     :draggable="isCustomSort"
@@ -206,10 +224,10 @@ function onRenameKeydown(e: KeyboardEvent, entry: NoteEntry) {
   >
     <!-- Checkbox -->
     <div
-      class="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded border-2 transition-all cursor-pointer"
+      class="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded border-2 transition-all duration-200 ease-out active:scale-90 cursor-pointer"
       :class="selectedIds.has(entry.id)
         ? 'bg-accent border-accent text-white'
-        : 'border-gray-200 hover:border-accent'"
+        : 'border-gray-200 dark:border-gray-600 hover:border-accent dark:hover:border-accent'"
       @click.stop="onCheckClick($event, entry.id, idx)"
     >
       <svg v-if="selectedIds.has(entry.id)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -220,7 +238,7 @@ function onRenameKeydown(e: KeyboardEvent, entry: NoteEntry) {
     <!-- Drag handle (custom sort only) -->
     <div
       v-if="isCustomSort"
-      class="flex-shrink-0 text-gray-300 hover:text-gray-500 dark:text-gray-400 dark:text-gray-500 cursor-grab active:cursor-grabbing"
+      class="flex-shrink-0 text-gray-300 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing"
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
         <circle cx="9" cy="5" r="2"/><circle cx="15" cy="5" r="2"/>
@@ -241,8 +259,8 @@ function onRenameKeydown(e: KeyboardEvent, entry: NoteEntry) {
       <!-- Title (edit mode) -->
       <input
         v-else
-        ref="renameInput"
-        class="text-[13px] font-medium w-[calc(100%+8px)] -ml-1 px-1 py-0.5 border border-accent rounded outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 dark:text-gray-100"
+        data-renaming
+        class="text-[13px] font-medium w-[calc(100%+8px)] -ml-1 px-1 py-0.5 border border-accent rounded outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
         :value="entry.title"
         @blur="finishRename(entry, true)"
         @keydown="onRenameKeydown($event, entry)"

@@ -19,7 +19,7 @@ const emit = defineEmits<{
     <div class="absolute inset-0 bg-black/30" @click="emit('cancel')" />
 
     <!-- Dialog -->
-    <div class="relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 w-[360px] max-w-[90vw]">
+    <div class="relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 p-6 w-[360px] max-w-[90vw]">
       <div class="flex items-center gap-2.5 mb-3">
         <div class="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center flex-shrink-0">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5">
@@ -27,20 +27,20 @@ const emit = defineEmits<{
           </svg>
         </div>
         <div>
-          <h3 class="text-[15px] font-bold text-gray-800 dark:text-gray-100 dark:text-gray-100">未保存的更改</h3>
-          <p class="text-[12px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">当前错题有未保存的修改，是否保存？</p>
+          <h3 class="text-[15px] font-bold text-gray-800 dark:text-gray-100">未保存的更改</h3>
+          <p class="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">当前错题有未保存的修改，是否保存？</p>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 mt-5">
         <button
-          class="px-4 py-2 rounded-lg text-[13px] font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-colors"
+          class="px-4 py-2 rounded-lg text-[13px] font-medium border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
           @click="emit('cancel')"
         >
           取消
         </button>
         <button
-          class="px-4 py-2 rounded-lg text-[13px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900 dark:bg-red-950 transition-colors"
+          class="px-4 py-2 rounded-lg text-[13px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900 dark:bg-red-950/50 transition-all duration-200 ease-out active:scale-95"
           @click="emit('discard')"
         >
           不保存

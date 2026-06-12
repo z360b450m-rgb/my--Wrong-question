@@ -11,6 +11,9 @@ interface KeyboardActions {
   answered?: Ref<boolean>
   revealAnswer?: () => void
   rateCard?: (quality: number) => Promise<void>
+  drawingEnabled?: Ref<boolean>
+  onUndo?: () => void
+  onRedo?: () => void
 }
 
 export function useKeyboard(actions: KeyboardActions) {
@@ -47,6 +50,20 @@ export function useKeyboard(actions: KeyboardActions) {
         actions.onNext()
       }
       return
+    }
+
+    // Drawing undo/redo
+    if (actions.drawingEnabled?.value) {
+      if (ctrl && e.key === 'z') {
+        e.preventDefault()
+        actions.onUndo?.()
+        return
+      }
+      if (ctrl && e.key === 'y') {
+        e.preventDefault()
+        actions.onRedo?.()
+        return
+      }
     }
 
     // Review mode shortcuts

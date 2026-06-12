@@ -56,7 +56,7 @@ export interface ReviewState {
   progress: ComputedRef<string>
   startReview: (force?: boolean) => void
   revealAnswer: () => void
-  rateCard: (quality: number) => Promise<void>
+  rateCard: (quality: number, note?: string) => Promise<void>
   exitReview: () => void
 }
 
@@ -134,15 +134,20 @@ export function useReview(
     stopTimer()
   }
 
-  async function rateCard(quality: number) {
+  async function rateCard(quality: number, note?: string) {
     const card = currentCard.value
     if (!card) return
 
     const entry = entries.value.find((e) => e.id === card.id)
     if (!entry) return
 
+    if (note && note.trim()) {
+      const separator = '\n\n————————————————\n\n'
+      entry.wrongAnswer = (entry.wrongAnswer || '') + separator + note.trim()
+    }
+
     applySM2(entry, quality)
-    await db.put(entry)
+    await db.put(JSON.parse(JSON.stringify(entry)))
 
     if (reviewIndex.value < reviewQueue.value.length - 1) {
       reviewIndex.value++

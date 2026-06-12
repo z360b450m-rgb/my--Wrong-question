@@ -274,10 +274,16 @@ export function useEntries() {
 
   async function updateEntryTitle(id: string, newTitle: string) {
     const entry = entries.value.find((e) => e.id === id)
-    if (!entry) return
+    if (!entry || !newTitle) return
     entry.title = newTitle
     entry.updatedAt = Date.now()
-    await db.put(toPlain(entry))
+    try {
+      await db.put(toPlain(entry))
+      showToast('已重命名')
+    } catch (err) {
+      console.error('Rename failed', err)
+      showToast('重命名失败')
+    }
   }
 
   function showToast(msg: string) {

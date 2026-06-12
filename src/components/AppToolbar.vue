@@ -30,13 +30,14 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center gap-2.5 px-5 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+  <div class="flex items-center gap-2.5 px-5 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800" style="-webkit-app-region: drag;">
     <!-- Mode toggle -->
     <button
-      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all"
+      style="-webkit-app-region: no-drag;"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 ease-out active:scale-95"
       :class="mode === 'review'
         ? 'bg-accent text-white hover:brightness-110'
-        : 'border border-gray-200 bg-white hover:bg-gray-100 text-gray-700'"
+        : 'border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'"
       @click="emit('toggleMode')"
     >
       <svg v-if="mode === 'edit'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -46,15 +47,16 @@ const emit = defineEmits<{
         <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
       </svg>
       {{ mode === 'review' ? '退出复习' : '复习模式' }}
-      <span v-if="mode === 'edit' && dueCount > 0" class="bg-red-50 dark:bg-red-9500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">{{ dueCount }}</span>
+      <span v-if="mode === 'edit' && dueCount > 0" class="bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-300 text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">{{ dueCount }}</span>
     </button>
 
     <!-- Drawing toggle -->
     <button
-      class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all"
+      style="-webkit-app-region: no-drag;"
+      class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 ease-out active:scale-95"
       :class="drawingEnabled
         ? 'bg-amber-500 text-white hover:brightness-110'
-        : 'border border-gray-200 bg-white hover:bg-gray-100 text-gray-600'"
+        : 'border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'"
       title="画笔 / 橡皮"
       @click="emit('toggleDrawing')"
     >
@@ -66,10 +68,11 @@ const emit = defineEmits<{
 
     <!-- Stats toggle -->
     <button
-      class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all"
+      style="-webkit-app-region: no-drag;"
+      class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 ease-out active:scale-95"
       :class="statsOpen
         ? 'bg-accent text-white hover:brightness-110'
-        : 'border border-gray-200 bg-white hover:bg-gray-100 text-gray-600'"
+        : 'border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'"
       title="统计面板"
       @click="emit('toggleStats')"
     >
@@ -80,12 +83,12 @@ const emit = defineEmits<{
     </button>
 
     <!-- Divider -->
-    <div class="w-px h-5 bg-gray-200" />
+    <div class="w-px h-5 bg-gray-200 dark:bg-gray-700" />
 
     <!-- Edit mode controls -->
     <template v-if="mode === 'edit'">
       <!-- Search -->
-      <div class="flex-1 flex items-center gap-2 bg-[#f7f8fa] dark:bg-gray-800 rounded-md px-3 py-1.5">
+      <div class="flex-1 flex items-center gap-2 bg-[#f7f8fa] dark:bg-gray-800 rounded-lg px-3 py-1.5 focus-within:bg-white dark:focus-within:bg-gray-700 focus-within:ring-2 focus-within:ring-accent/20 transition-all">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 dark:text-gray-500 flex-shrink-0">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
@@ -100,6 +103,7 @@ const emit = defineEmits<{
 
       <!-- New entry -->
       <button
+        style="-webkit-app-region: no-drag;"
         class="btn-primary flex items-center gap-1 px-3.5 py-1.5 rounded-md bg-accent text-white text-[13px] font-medium hover:brightness-110 transition-all"
         @click="emit('new')"
       >
@@ -112,7 +116,8 @@ const emit = defineEmits<{
       <!-- Prev/Next (visible when entry active) -->
       <button
         v-if="activeId"
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] transition-all"
+        style="-webkit-app-region: no-drag;"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] transition-all duration-200 ease-out active:scale-95"
         :class="canGoPrev ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800' : 'opacity-40 pointer-events-none'"
         title="上一题 (Ctrl+←)"
         @click="emit('prev')"
@@ -124,7 +129,8 @@ const emit = defineEmits<{
       </button>
       <button
         v-if="activeId"
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] transition-all"
+        style="-webkit-app-region: no-drag;"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] transition-all duration-200 ease-out active:scale-95"
         :class="canGoNext ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800' : 'opacity-40 pointer-events-none'"
         title="下一题 (Ctrl+→)"
         @click="emit('next')"
@@ -138,10 +144,11 @@ const emit = defineEmits<{
       <!-- Reveal toggle -->
       <button
         v-if="activeId"
+        style="-webkit-app-region: no-drag;"
         class="btn-icon flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-[13px] cursor-pointer transition-all"
         :class="answersHidden
           ? 'bg-accent text-white border-accent'
-          : 'border-gray-200 bg-white hover:bg-gray-100'"
+          : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'"
         title="显示/隐藏正确答案"
         @click="emit('reveal')"
       >
@@ -162,7 +169,8 @@ const emit = defineEmits<{
       <!-- Delete -->
       <button
         v-if="activeId"
-        class="flex items-center gap-1 px-3.5 py-1.5 rounded-md text-[13px] font-medium text-wrong-accent hover:bg-wrong-bg transition-all"
+        style="-webkit-app-region: no-drag;"
+        class="flex items-center gap-1 px-3.5 py-1.5 rounded-md text-[13px] font-medium text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-all duration-200 ease-out active:scale-95"
         @click="emit('delete')"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -174,10 +182,11 @@ const emit = defineEmits<{
       <!-- Save -->
       <button
         v-if="activeId"
-        class="flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all"
+        style="-webkit-app-region: no-drag;"
+        class="flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 ease-out active:scale-95"
         :class="isDirty
           ? 'bg-accent text-white hover:brightness-110 cursor-pointer'
-          : 'border border-gray-200 bg-white text-gray-300 cursor-not-allowed'"
+          : 'border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed'"
         :disabled="!isDirty"
         title="保存 (Ctrl+S)"
         @click="isDirty && emit('save')"
@@ -192,7 +201,8 @@ const emit = defineEmits<{
       <!-- Import/Export -->
       <div class="w-px h-5 bg-gray-200 dark:bg-gray-700" />
       <button
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+        style="-webkit-app-region: no-drag;"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
         title="导出 JSON"
         @click="emit('exportJSON')"
       >
@@ -202,7 +212,8 @@ const emit = defineEmits<{
         导出
       </button>
       <button
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+        style="-webkit-app-region: no-drag;"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
         title="导入 JSON"
         @click="emit('importJSON')"
       >

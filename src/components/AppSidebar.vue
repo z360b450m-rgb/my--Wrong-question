@@ -103,8 +103,8 @@ function cancelTags() {
 </script>
 
 <template>
-  <aside class="w-[280px] min-w-[280px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
-    <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+  <aside class="w-[280px] min-w-[280px] bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
+    <div class="p-4 border-b border-gray-100 dark:border-gray-800">
       <!-- Logo -->
       <div class="flex items-center justify-between mb-3.5">
         <div class="text-xl font-bold text-accent flex items-center gap-2">
@@ -113,18 +113,6 @@ function cancelTags() {
           </svg>
           错题本
         </div>
-        <!-- Review badge -->
-        <button
-          v-if="dueCount > 0 && mode === 'edit'"
-          class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-600 text-[11px] font-semibold hover:bg-red-100 transition-all"
-          title="开始复习"
-          @click="emit('startReview')"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-          复习 {{ dueCount }}
-        </button>
       </div>
 
       <!-- Subject filter -->
@@ -146,7 +134,7 @@ function cancelTags() {
     </div>
 
     <!-- Entry list -->
-    <div class="flex-1 overflow-y-auto border-t border-gray-200 dark:border-gray-700">
+    <div class="flex-1 overflow-y-auto border-t border-gray-100 dark:border-gray-800">
       <div class="px-4 py-2.5 text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-[0.5px] flex justify-between items-center">
         <!-- Select all + Batch dropdown -->
         <div class="flex items-center gap-2">
@@ -165,7 +153,7 @@ function cancelTags() {
 
           <div class="relative">
             <button
-              class="flex items-center gap-1 text-[11px] transition-colors font-medium"
+              class="flex items-center gap-1 text-[11px] transition-all duration-200 ease-out active:scale-95 font-medium"
               :class="selectedCount > 0 ? 'text-accent' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300'"
               @click.stop="batchMenuOpen = !batchMenuOpen"
             >
@@ -179,7 +167,7 @@ function cancelTags() {
             <!-- Batch dropdown menu -->
             <div
               v-if="batchMenuOpen"
-              class="absolute left-0 top-6 z-30 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[150px]"
+              class="absolute left-0 top-6 z-30 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 py-1 min-w-[150px]"
               @click.stop
             >
               <!-- Tag input inline -->
@@ -188,14 +176,14 @@ function cancelTags() {
                   <input
                     v-model="tagText"
                     type="text"
-                    class="w-full border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-[12px] outline-none focus:border-accent"
+                    class="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                     placeholder="标签1, 标签2"
                     @keydown.enter="confirmTags"
                     @keydown.escape="cancelTags"
                   />
                   <div class="flex justify-end gap-1.5 mt-2">
                     <button
-                      class="px-2.5 py-1 rounded text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 transition-colors"
+                      class="px-2.5 py-1 rounded text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300 transition-all duration-200 ease-out active:scale-95"
                       @click="cancelTags"
                     >
                       取消
@@ -212,7 +200,7 @@ function cancelTags() {
               <template v-else>
                 <button
                   v-if="selectedCount > 0"
-                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-colors"
+                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
                   @click="handleDeselectAll"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -221,7 +209,7 @@ function cancelTags() {
                   取消选择
                 </button>
                 <button
-                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-colors"
+                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
                   :class="{ 'opacity-30 pointer-events-none': selectedCount === 0 }"
                   :disabled="selectedCount === 0"
                   @click="openTagInput"
@@ -232,7 +220,7 @@ function cancelTags() {
                   批量标签
                 </button>
                 <button
-                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-colors"
+                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
                   :class="{ 'opacity-30 pointer-events-none': selectedCount === 0 }"
                   :disabled="selectedCount === 0"
                   @click="handleBatchExport"
@@ -244,7 +232,7 @@ function cancelTags() {
                 </button>
                 <div class="border-t border-gray-100 dark:border-gray-800 my-1" />
                 <button
-                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900 dark:bg-red-950 transition-colors"
+                  class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900 dark:bg-red-950/50 transition-all duration-200 ease-out active:scale-95"
                   :class="{ 'opacity-30 pointer-events-none': selectedCount === 0 }"
                   :disabled="selectedCount === 0"
                   @click="handleBatchDelete"
@@ -265,7 +253,7 @@ function cancelTags() {
         <!-- Sort selector -->
         <div class="relative">
           <button
-            class="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-200 transition-colors font-medium lowercase"
+            class="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200 transition-all duration-200 ease-out active:scale-95 font-medium lowercase"
             @click.stop="sortOpen = !sortOpen"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -278,13 +266,13 @@ function cancelTags() {
           <!-- Dropdown -->
           <div
             v-if="sortOpen"
-            class="absolute right-0 top-6 z-30 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[140px]"
+            class="absolute right-0 top-6 z-30 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 py-1 min-w-[140px]"
             @click.stop
           >
             <button
               v-for="opt in sortOptions"
               :key="opt.key"
-              class="w-full flex items-center justify-between px-3 py-1.5 text-[12px] text-left hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 transition-colors"
+              class="w-full flex items-center justify-between px-3 py-1.5 text-[12px] text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
               :class="sortKey === opt.key ? 'text-accent font-medium' : 'text-gray-600 dark:text-gray-300'"
               @click="handleSortSelect(opt.key)"
             >

@@ -18,9 +18,9 @@ export default {
           accent: '#ef4444',
         },
         correct: {
-          bg: '#f0fdf4',
-          border: '#bbf7d0',
-          accent: '#22c55e',
+          bg: '#ecfdf5',
+          border: '#a7f3d0',
+          accent: '#10b981',
         },
       },
     },
