@@ -45,7 +45,7 @@ function applySM2(entry: NoteEntry, quality: number) {
 
 export interface ReviewState {
   mode: Ref<'edit' | 'review'>
-  reviewQueue: ComputedRef<NoteEntry[]>
+  reviewQueue: Ref<NoteEntry[]>
   reviewIndex: Ref<number>
   currentCard: ComputedRef<NoteEntry | undefined>
   answered: Ref<boolean>
@@ -54,6 +54,7 @@ export interface ReviewState {
   dueCount: ComputedRef<number>
   isReviewing: ComputedRef<boolean>
   progress: ComputedRef<string>
+  progressPercent: ComputedRef<number>
   startReview: (force?: boolean) => void
   revealAnswer: () => void
   rateCard: (quality: number, note?: string) => Promise<void>
@@ -99,10 +100,7 @@ export function useReview(
     }),
   )
 
-  const reviewQueue = computed(() => {
-    const pool = forceAll.value ? entries.value : dueEntries.value
-    return shuffle(pool)
-  })
+  const reviewQueue = ref<NoteEntry[]>([])
 
   const currentCard = computed(() => reviewQueue.value[reviewIndex.value])
 
@@ -118,11 +116,19 @@ export function useReview(
 
   const progress = computed(() => {
     if (reviewQueue.value.length === 0) return ''
-    return `${reviewIndex.value + 1}/${reviewQueue.value.length}`
+    const remaining = Math.max(0, reviewQueue.value.length - reviewIndex.value)
+    return `剩余 ${remaining} 题`
+  })
+
+  const progressPercent = computed(() => {
+    if (reviewQueue.value.length === 0) return 0
+    return (reviewIndex.value / reviewQueue.value.length) * 100
   })
 
   function startReview(force = false) {
     forceAll.value = force
+    const pool = entries.value
+    reviewQueue.value = shuffle(pool)
     mode.value = 'review'
     reviewIndex.value = 0
     answered.value = false
@@ -154,7 +160,6 @@ export function useReview(
       answered.value = false
       startTimer()
     } else {
-      // All cards reviewed — advance past the queue to show completion
       reviewIndex.value++
     }
   }
@@ -176,6 +181,7 @@ export function useReview(
     dueCount,
     isReviewing,
     progress,
+    progressPercent,
     startReview,
     revealAnswer,
     rateCard,

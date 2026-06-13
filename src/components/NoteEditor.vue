@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, onMounted, nextTick, inject, type Ref } from 'vue'
+import { ref, watch, onUnmounted, nextTick, inject, type Ref } from 'vue'
 import type { NoteEntry } from '@/types'
 import AnswerPanel from './AnswerPanel.vue'
 
@@ -12,6 +12,7 @@ const emit = defineEmits<{
   update: []
   reveal: []
   'blur-save': []
+  'mount-canvas': [el: HTMLElement]
 }>()
 
 function onBlur() {
@@ -20,7 +21,7 @@ function onBlur() {
 
 // Template refs
 const questionBody = ref<HTMLDivElement | null>(null)
-const questionScroll = ref<HTMLDivElement | null>(null)
+const questionContentRef = ref<HTMLDivElement | null>(null)
 const wrongPanelEl = ref<HTMLDivElement | null>(null)
 const correctPanelEl = ref<HTMLDivElement | null>(null)
 const questionPanelEl = ref<HTMLDivElement | null>(null)
@@ -73,8 +74,8 @@ function onQuestionPaste(e: ClipboardEvent) {
   }
 }
 
-const setCanvasParent = inject<(el: HTMLElement | null) => void>('setCanvasParent', () => {})
 const drawingEnabled = inject<Ref<boolean>>('drawingEnabled', ref(false))
+const resizeCanvas = inject<() => void>('resizeCanvas', () => {})
 
 // Set question content when entry changes, without v-html interference
 watch(
@@ -85,7 +86,9 @@ watch(
         suppressInput = true
         questionBody.value.innerHTML = props.entry.question
         suppressInput = false
-        setCanvasParent(questionScroll.value)
+      }
+      if (questionContentRef.value) {
+        emit('mount-canvas', questionContentRef.value)
       }
     })
   },
@@ -167,6 +170,8 @@ function onResize(e: MouseEvent) {
       correctPanelEl.value.style.flex = '1'
     }
   }
+
+  resizeCanvas()
 }
 
 function stopResize() {
@@ -176,6 +181,7 @@ function stopResize() {
   resizeState = null
   window.removeEventListener('mousemove', onResize)
   window.removeEventListener('mouseup', stopResize)
+  resizeCanvas()
 }
 
 onUnmounted(() => {
@@ -225,7 +231,7 @@ onUnmounted(() => {
         题目
       </div>
       <div class="flex-1 overflow-y-auto">
-        <div ref="questionScroll" class="relative">
+        <div ref="questionContentRef" style="position: relative; min-height: 100%;">
           <div
             ref="questionBody"
             class="px-3.5 py-3 text-sm leading-relaxed md-content outline-none min-h-[60px]"

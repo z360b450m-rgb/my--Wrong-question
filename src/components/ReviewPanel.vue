@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, inject, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import type { NoteEntry } from '@/types'
 
 const props = defineProps<{
@@ -7,6 +7,7 @@ const props = defineProps<{
   answered: boolean
   elapsedMs: number
   progress: string
+  progressPercent: number
   dueCount: number
   reviewedToday: number
   isReviewing: boolean
@@ -17,20 +18,21 @@ const emit = defineEmits<{
   rate: [quality: number, note: string]
   startReview: [force: boolean]
   exitReview: []
+  'mount-canvas': [el: HTMLElement]
 }>()
 
 const showCorrect = ref(false)
 const note = ref('')
 const rated = ref(false)
-const questionScroll = ref<HTMLDivElement | null>(null)
-
-const setCanvasParent = inject<(el: HTMLElement | null) => void>('setCanvasParent', () => {})
+const questionContentRef = ref<HTMLDivElement | null>(null)
 
 watch(() => props.entry, () => {
   showCorrect.value = false
   note.value = ''
   nextTick(() => {
-    if (questionScroll.value) setCanvasParent(questionScroll.value)
+    if (questionContentRef.value) {
+      emit('mount-canvas', questionContentRef.value)
+    }
   })
 }, { immediate: true })
 
@@ -70,7 +72,7 @@ function formatTime(ms: number): string {
         <div class="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
           <div
             class="h-full bg-accent rounded-full transition-all duration-300"
-            :style="{ width: progress ? (parseInt(progress.split('/')[0]) / parseInt(progress.split('/')[1]) * 100) + '%' : '0%' }"
+            :style="{ width: progressPercent + '%' }"
           />
         </div>
         <span class="text-xs tabular-nums font-medium min-w-[60px] text-right"
@@ -89,7 +91,7 @@ function formatTime(ms: number): string {
           <span v-if="entry.subject" class="ml-auto text-[10px] text-gray-300 dark:text-gray-600">{{ entry.subject }}</span>
         </div>
         <div class="flex-1 overflow-y-auto">
-          <div ref="questionScroll" class="relative">
+          <div ref="questionContentRef" style="position: relative; min-height: 100%;">
             <div class="px-3.5 py-3 text-sm leading-relaxed md-content" v-html="entry.question || '<span class=\'text-gray-300\'>无题目内容</span>'" />
           </div>
         </div>

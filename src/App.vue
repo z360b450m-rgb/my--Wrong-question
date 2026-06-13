@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide, computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { provide, computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useEntries } from './composables/useEntries'
 import { useFilter } from './composables/useFilter'
 import { useReview } from './composables/useReview'
@@ -77,6 +77,7 @@ const {
   dueCount,
   isReviewing,
   progress,
+  progressPercent,
   startReview,
   revealAnswer,
   rateCard,
@@ -95,6 +96,8 @@ const {
   clearCanvas,
   undo,
   redo,
+  resizeCanvas,
+  loadDrawing,
   mountCanvas,
   setCanvasParent,
 } = useDrawing()
@@ -106,7 +109,6 @@ const stats = useStats(entries)
 const statsOpen = ref(false)
 
 const mainArea = ref<HTMLElement | null>(null)
-const canvasMounted = ref(false)
 
 // Unsaved changes flow
 const showUnsavedModal = ref(false)
@@ -114,12 +116,6 @@ const pendingEntryId = ref<string | null>(null)
 const pendingAction = ref<'select' | 'create' | 'review' | null>(null)
 
 onMounted(async () => {
-  nextTick(() => {
-    if (mainArea.value && !canvasMounted.value) {
-      mountCanvas(mainArea.value)
-      canvasMounted.value = true
-    }
-  })
   // Check for crash recovery
   const recovered = await checkCrashRecovery()
   if (recovered.length > 0) {
@@ -137,6 +133,7 @@ onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
 provide('toast', showToast)
 provide('setCanvasParent', setCanvasParent)
 provide('drawingEnabled', drawingEnabled)
+provide('resizeCanvas', resizeCanvas)
 
 useKeyboard({
   onCreate: () => handleCreate(),
@@ -295,6 +292,10 @@ const canGoPrev = computed(() => navIdx.value > 0)
 const canGoNext = computed(() => navIdx.value < filteredIds.value.length - 1 && navIdx.value >= 0)
 
 loadEntries()
+
+watch(activeId, (newId) => {
+  if (newId) loadDrawing(newId)
+})
 </script>
 
 <template>
@@ -365,6 +366,7 @@ loadEntries()
           @update="markDirty"
           @blur-save="snapshotSave"
           @reveal="answersHidden = false"
+          @mount-canvas="el => mountCanvas(el)"
         />
 
         <ReviewPanel
@@ -373,6 +375,7 @@ loadEntries()
           :answered="answered"
           :elapsed-ms="elapsedMs"
           :progress="progress"
+          :progress-percent="progressPercent"
           :due-count="dueCount"
           :reviewed-today="reviewedToday"
           :is-reviewing="isReviewing"
@@ -380,6 +383,7 @@ loadEntries()
           @rate="(q: number, note: string) => rateCard(q, note)"
           @start-review="(force: boolean) => handleStartReview(force)"
           @exit-review="handleExitReview"
+          @mount-canvas="el => mountCanvas(el)"
         />
 
         <div v-else class="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-50/50 dark:bg-gray-900/50">

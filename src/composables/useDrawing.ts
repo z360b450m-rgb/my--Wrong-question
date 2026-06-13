@@ -1,4 +1,4 @@
-import { ref, onUnmounted, nextTick, type Ref } from 'vue'
+import { ref, onUnmounted, type Ref } from 'vue'
 
 export type DrawTool = 'pen' | 'eraser'
 
@@ -23,6 +23,8 @@ export interface DrawingState {
   clearCanvas: () => void
   undo: () => void
   redo: () => void
+  resizeCanvas: () => void
+  loadDrawing: (entryId: string) => void
   mountCanvas: (container: HTMLElement) => void
   setCanvasParent: (el: HTMLElement | null) => void
 }
@@ -36,6 +38,11 @@ export function useDrawing(): DrawingState {
   let ctx: CanvasRenderingContext2D | null = null
   let drawing = false
   let lastPos = { x: 0, y: 0 }
+  let ro: ResizeObserver | null = null
+
+  // Per-entry drawing store
+  const drawingStore = new Map<string, string>()
+  let currentEntryId: string | null = null
 
   // Undo/redo history
   const undoStack: string[] = []
@@ -91,16 +98,30 @@ export function useDrawing(): DrawingState {
     if (!canvas || !ctx) return
     const parent = canvas.parentElement
     if (!parent) return
-    const r = parent.getBoundingClientRect()
     const dpr = window.devicePixelRatio || 1
-    const physicalWidth = r.width * dpr
-    const physicalHeight = r.height * dpr
+    // Use scroll dimensions to cover full content area (supports scrolling)
+    const w = parent.scrollWidth || parent.clientWidth
+    const h = parent.scrollHeight || parent.clientHeight
+    if (w === 0 || h === 0) return
+    const physicalWidth = w * dpr
+    const physicalHeight = h * dpr
     if (canvas.width !== physicalWidth || canvas.height !== physicalHeight) {
+      const tempCanvas = document.createElement('canvas')
+      tempCanvas.width = canvas.width
+      tempCanvas.height = canvas.height
+      const tempCtx = tempCanvas.getContext('2d')
+      if (tempCtx) tempCtx.drawImage(canvas, 0, 0)
+
       canvas.width = physicalWidth
       canvas.height = physicalHeight
-      canvas.style.width = `${r.width}px`
-      canvas.style.height = `${r.height}px`
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
       ctx.scale(dpr, dpr)
+
+      ctx.save()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(tempCanvas, 0, 0)
+      ctx.restore()
     }
   }
 
@@ -172,6 +193,23 @@ export function useDrawing(): DrawingState {
   function onTouchEnd() { onEnd() }
 
   function mountCanvas(container: HTMLElement) {
+    // Save current canvas content before teardown
+    let savedImage: HTMLCanvasElement | null = null
+    if (canvas && canvas.width > 0 && canvas.height > 0) {
+      savedImage = document.createElement('canvas')
+      savedImage.width = canvas.width
+      savedImage.height = canvas.height
+      const savedCtx = savedImage.getContext('2d')
+      if (savedCtx) savedCtx.drawImage(canvas, 0, 0)
+    }
+
+    // Clean up old canvas
+    if (canvas && canvas.parentElement) {
+      canvas.parentElement.removeChild(canvas)
+      window.removeEventListener('resize', resize)
+      if (ro) ro.disconnect()
+    }
+
     canvas = document.createElement('canvas')
     canvas.style.position = 'absolute'
     canvas.style.top = '0'
@@ -180,10 +218,7 @@ export function useDrawing(): DrawingState {
     canvas.style.zIndex = '10'
     ctx = canvas.getContext('2d')
 
-    const computed = getComputedStyle(container)
-    if (computed.position === 'static') {
-      container.style.position = 'relative'
-    }
+    container.classList.add('relative')
     container.appendChild(canvas)
 
     canvas.addEventListener('mousedown', onMouseDown)
@@ -197,9 +232,16 @@ export function useDrawing(): DrawingState {
     resize()
     window.addEventListener('resize', resize)
 
-    // Observe container size changes
-    const ro = new ResizeObserver(() => resize())
+    ro = new ResizeObserver(() => resize())
     ro.observe(container)
+
+    // Restore saved content onto the new canvas
+    if (savedImage && savedImage.width > 0 && savedImage.height > 0 && ctx) {
+      ctx.save()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(savedImage, 0, 0)
+      ctx.restore()
+    }
   }
 
   function setCanvasParent(el: HTMLElement | null) {
@@ -211,6 +253,35 @@ export function useDrawing(): DrawingState {
     el.appendChild(canvas)
     resize()
   }
+
+  function loadDrawing(entryId: string) {
+    if (!canvas) return
+    if (currentEntryId === entryId) return
+
+    // Save current drawing for the entry we're leaving
+    if (currentEntryId) {
+      drawingStore.set(currentEntryId, canvas.toDataURL())
+    }
+
+    currentEntryId = entryId
+
+    // Reset undo/redo for the new entry
+    undoStack.length = 0
+    redoStack.length = 0
+    updateHistoryFlags()
+
+    // Restore saved drawing or start blank — clear synchronously first to avoid
+    // flashing the previous entry's drawing before the async image load completes.
+    if (ctx) {
+      const dpr = window.devicePixelRatio || 1
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr)
+    }
+    if (drawingStore.has(entryId)) {
+      restoreSnapshot(drawingStore.get(entryId)!)
+    }
+  }
+
+  function resizeCanvas() { resize() }
 
   function clearCanvas() {
     if (!canvas || !ctx) return
@@ -264,6 +335,8 @@ export function useDrawing(): DrawingState {
     clearCanvas,
     undo,
     redo,
+    resizeCanvas,
+    loadDrawing,
     mountCanvas,
     setCanvasParent,
   }
