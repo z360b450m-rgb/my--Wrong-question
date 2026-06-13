@@ -3,21 +3,22 @@
   "version": "2.0.0",
   "private": true,
   "description": "智能错题管理工具 - 记录错题、对比答案、高效复习",
-  "main": "electron/main.js",
-  "author": "",
+  "author": "Nie Yulong (聂昱龙)",
   "license": "MIT",
   "type": "module",
+  "keywords": [
+    "electron",
+    "vue3",
+    "vite",
+    "education"
+  ],
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "electron": "vite build && electron .",
-    "electron:dev": "vite build --watch & sleep 3 && electron .",
-    "build:win": "vite build && electron-builder --win portable",
-    "build:win:installer": "vite build && electron-builder --win nsis",
-    "build:mac": "vite build && electron-builder --mac",
-    "build:linux": "vite build && electron-builder --linux",
-    "build:all": "vite build && electron-builder --win --mac --linux"
+    "build:win:installer": "vite build && electron-builder --win nsis"
   },
   "build": {
     "appId": "com.cuotiben.app",
@@ -31,8 +32,18 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "public/icon-512.png"
     },
@@ -40,7 +51,10 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "installerLanguages": ["zh_CN", "en_US"],
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
       "shortcutName": "错题本"
     },
     "mac": {
@@ -49,7 +63,10 @@
       "category": "public.app-category.education"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "public/icon-512.png",
       "category": "Education"
     }
@@ -57,8 +74,8 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
     "autoprefixer": "^10.4.20",
-    "electron": "latest",
-    "electron-builder": "latest",
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.2",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.6.0",

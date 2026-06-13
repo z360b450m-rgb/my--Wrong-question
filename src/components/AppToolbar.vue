@@ -26,6 +26,7 @@ const emit = defineEmits<{
   toggleStats: []
   exportJSON: []
   importJSON: []
+  changeDataDir: []
 }>()
 </script>
 
@@ -221,6 +222,17 @@ const emit = defineEmits<{
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="3 10 8 15 13 10"/><line x1="8" y1="15" x2="8" y2="3"/>
         </svg>
         导入
+      </button>
+      <button
+        style="-webkit-app-region: no-drag;"
+        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+        title="更改数据保存目录"
+        @click="emit('changeDataDir')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        数据目录
       </button>
     </template>
 

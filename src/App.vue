@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { provide, computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useEntries } from './composables/useEntries'
+import { migrateFromIndexedDB } from './services/db'
 import { useFilter } from './composables/useFilter'
 import { useReview } from './composables/useReview'
 import { useDrawing, PEN_COLORS } from './composables/useDrawing'
@@ -116,6 +117,14 @@ const pendingEntryId = ref<string | null>(null)
 const pendingAction = ref<'select' | 'create' | 'review' | null>(null)
 
 onMounted(async () => {
+  // Migrate from IndexedDB to file storage on first launch in Electron
+  const migrated = await migrateFromIndexedDB()
+  if (migrated > 0) {
+    // Reload entries from file storage after migration
+    await loadEntries()
+    showToast(`已迁移 ${migrated} 条错题到本地文件`)
+  }
+
   // Check for crash recovery
   const recovered = await checkCrashRecovery()
   if (recovered.length > 0) {
@@ -225,6 +234,15 @@ function handleBatchTag(tags: string[]) {
 
 function handleBatchExport() {
   batchExport(Array.from(selectedIds.value))
+}
+
+async function handleChangeDataDir() {
+  if (!window.electronAPI) {
+    showToast('此功能仅在桌面端可用')
+    return
+  }
+  const newDir = await window.electronAPI.setDataDir()
+  showToast('数据目录已更改为：' + newDir)
 }
 
 function handleSelectEntry(id: string) {
@@ -356,6 +374,7 @@ watch(activeId, (newId) => {
         @toggleStats="statsOpen = !statsOpen"
         @exportJSON="exportJSON"
         @importJSON="importJSON"
+        @changeDataDir="handleChangeDataDir"
       />
 
       <div ref="mainArea" class="flex-1 flex flex-col min-h-0 canvas-host">

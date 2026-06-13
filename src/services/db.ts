@@ -1,9 +1,58 @@
 import type { NoteEntry } from '@/types'
 
-const DB_NAME = 'CuotiDB'
-const DB_VERSION = 2
 const STORE = 'entries'
 const SNAP_STORE = 'snapshots'
+
+// ── Electron file-based storage (primary) ──────────────────────
+
+function isElectron(): boolean {
+  return typeof window !== 'undefined' && !!window.electronAPI
+}
+
+const fileDb = {
+  async getAll(): Promise<NoteEntry[]> {
+    return window.electronAPI!.getAll()
+  },
+
+  async get(id: string): Promise<NoteEntry | undefined> {
+    const entry = await window.electronAPI!.get(id)
+    return entry ?? undefined
+  },
+
+  async put(entry: NoteEntry): Promise<void> {
+    await window.electronAPI!.put(entry)
+  },
+
+  async delete(id: string): Promise<void> {
+    await window.electronAPI!.delete(id)
+  },
+
+  async putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
+    await window.electronAPI!.putSnapshot({ entryId, data, savedAt: Date.now() })
+  },
+
+  async getSnapshot(entryId: string): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
+    const snap = await window.electronAPI!.getSnapshot(entryId)
+    return snap ?? undefined
+  },
+
+  async getAllSnapshots(): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
+    return window.electronAPI!.getAllSnapshots()
+  },
+
+  async deleteSnapshot(entryId: string): Promise<void> {
+    await window.electronAPI!.deleteSnapshot(entryId)
+  },
+
+  async deleteAllSnapshots(): Promise<void> {
+    await window.electronAPI!.deleteAllSnapshots()
+  },
+}
+
+// ── IndexedDB fallback (browser dev mode) ───────────────────────
+
+const DB_NAME = 'CuotiDB'
+const DB_VERSION = 2
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -41,7 +90,7 @@ function tx<T>(
   )
 }
 
-export const db = {
+const idbDb = {
   getAll(): Promise<NoteEntry[]> {
     return tx('readonly', (s) => s.getAll())
   },
@@ -58,7 +107,6 @@ export const db = {
     return tx('readwrite', (s) => s.delete(id)).then(() => undefined)
   },
 
-  // Snapshot store for crash protection
   putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
     return tx('readwrite', (s) => s.put({ entryId, data, savedAt: Date.now() }), SNAP_STORE).then(() => undefined)
   },
@@ -78,4 +126,27 @@ export const db = {
   deleteAllSnapshots(): Promise<void> {
     return tx('readwrite', (s) => s.clear(), SNAP_STORE).then(() => undefined)
   },
+}
+
+// ── Unified export ─────────────────────────────────────────────
+
+export const db = isElectron() ? fileDb : idbDb
+
+// ── Migration: IndexedDB → file storage ─────────────────────────
+
+export async function migrateFromIndexedDB(): Promise<number> {
+  if (!isElectron()) return 0
+  const existing = await fileDb.getAll()
+  if (existing.length > 0) return 0 // Already has file data, skip
+
+  try {
+    const idbEntries = await idbDb.getAll()
+    if (idbEntries.length === 0) return 0
+    for (const entry of idbEntries) {
+      await fileDb.put(entry)
+    }
+    return idbEntries.length
+  } catch {
+    return 0
+  }
 }
