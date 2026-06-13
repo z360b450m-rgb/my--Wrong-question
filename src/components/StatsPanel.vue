@@ -17,11 +17,12 @@ const hueStep = computed(() => {
 </script>
 
 <template>
-  <!-- Backdrop -->
-  <div class="fixed inset-0 z-40 bg-black/15 transition-opacity" @click="emit('close')" />
+  <div>
+    <!-- Backdrop -->
+    <div class="fixed inset-0 z-40 bg-black/15" @click="emit('close')" />
 
-  <!-- Panel -->
-  <div class="fixed right-0 top-0 bottom-0 z-50 w-[340px] bg-white dark:bg-gray-900 shadow-xl border-l border-gray-100 dark:border-gray-800 overflow-y-auto">
+    <!-- Panel -->
+    <div class="fixed right-0 top-0 bottom-0 z-50 w-[340px] bg-white dark:bg-gray-900 shadow-xl border-l border-gray-100 dark:border-gray-800 overflow-y-auto">
     <!-- Header -->
     <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
       <h2 class="text-[15px] font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
@@ -136,6 +137,7 @@ const hueStep = computed(() => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>

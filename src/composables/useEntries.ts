@@ -151,11 +151,19 @@ export function useEntries() {
     if (snapshotTimer) clearInterval(snapshotTimer)
   })
 
+  let loadSeq = 0
+
   async function loadEntries() {
+    const seq = ++loadSeq
     try {
-      entries.value = await db.getAll()
+      const result = await db.getAll()
+      if (seq === loadSeq) {
+        entries.value = result
+      }
     } catch {
-      entries.value = []
+      if (seq === loadSeq && entries.value.length === 0) {
+        entries.value = []
+      }
     }
   }
 
@@ -286,11 +294,15 @@ export function useEntries() {
     }
   }
 
+  let toastTimer: ReturnType<typeof setTimeout> | null = null
+
   function showToast(msg: string) {
+    if (toastTimer) clearTimeout(toastTimer)
     toastMsg.value = msg
-    setTimeout(() => {
+    toastTimer = setTimeout(() => {
       toastMsg.value = ''
-    }, 1800)
+      toastTimer = null
+    }, 500)
   }
 
   function openDeleteModal() {

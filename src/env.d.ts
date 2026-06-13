@@ -14,5 +14,8 @@ interface Window {
     setDataDir: () => Promise<string>
     exportAll: () => Promise<string>
     importAll: (entries: any[]) => Promise<void>
+    getAllReviewLogs: () => Promise<any[]>
+    addReviewLog: (log: any) => Promise<void>
+    deleteReviewLogsByEntry: (entryId: string) => Promise<void>
   }
 }

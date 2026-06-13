@@ -20,4 +20,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   exportAll: () => ipcRenderer.invoke('storage:exportAll'),
   importAll: (entries) => ipcRenderer.invoke('storage:importAll', entries),
+
+  // Review log API
+  getAllReviewLogs: () => ipcRenderer.invoke('storage:getAllReviewLogs'),
+  addReviewLog: (log) => ipcRenderer.invoke('storage:addReviewLog', log),
+  deleteReviewLogsByEntry: (entryId) => ipcRenderer.invoke('storage:deleteReviewLogsByEntry', entryId),
 });

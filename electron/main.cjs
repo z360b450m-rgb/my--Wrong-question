@@ -40,11 +40,11 @@ function getDataFilePath() {
 function readData() {
   const filePath = getDataFilePath();
   try {
-    if (!fs.existsSync(filePath)) return { entries: [], snapshots: [] };
+    if (!fs.existsSync(filePath)) return { entries: [], snapshots: [], reviewLogs: [] };
     const raw = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(raw);
   } catch {
-    return { entries: [], snapshots: [] };
+    return { entries: [], snapshots: [], reviewLogs: [] };
   }
 }
 
@@ -115,6 +115,26 @@ ipcMain.handle('storage:deleteSnapshot', (_e, entryId) => {
 ipcMain.handle('storage:deleteAllSnapshots', () => {
   const data = readData();
   data.snapshots = [];
+  writeData(data);
+});
+
+// ── Review log handlers ──────────────────────────────────────────
+
+ipcMain.handle('storage:getAllReviewLogs', () => {
+  const data = readData();
+  return data.reviewLogs || [];
+});
+
+ipcMain.handle('storage:addReviewLog', (_e, log) => {
+  const data = readData();
+  if (!data.reviewLogs) data.reviewLogs = [];
+  data.reviewLogs.push(log);
+  writeData(data);
+});
+
+ipcMain.handle('storage:deleteReviewLogsByEntry', (_e, entryId) => {
+  const data = readData();
+  data.reviewLogs = (data.reviewLogs || []).filter((l) => l.entryId !== entryId);
   writeData(data);
 });
 

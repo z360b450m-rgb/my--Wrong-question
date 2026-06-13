@@ -8,9 +8,12 @@ let timer: ReturnType<typeof setTimeout> | null = null
 watch(
   () => props.message,
   (msg) => {
-    if (!msg) return
-    visible.value = true
     if (timer) clearTimeout(timer)
+    if (!msg) {
+      visible.value = false
+      return
+    }
+    visible.value = true
     timer = setTimeout(() => {
       visible.value = false
     }, 1600)

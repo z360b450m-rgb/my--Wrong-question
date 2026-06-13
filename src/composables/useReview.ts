@@ -1,6 +1,7 @@
 import { ref, computed, onUnmounted, type Ref, type ComputedRef } from 'vue'
 import type { NoteEntry } from '@/types'
 import { db } from '@/services/db'
+import { useReviewLogs } from '@/composables/useReviewLogs'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -55,10 +56,20 @@ export interface ReviewState {
   isReviewing: ComputedRef<boolean>
   progress: ComputedRef<string>
   progressPercent: ComputedRef<number>
-  startReview: (force?: boolean) => void
+  sessionDone: Ref<boolean>
+  sessionRecords: Ref<SessionRecord[]>
+  totalSessionMs: ComputedRef<number>
+  startReview: (force?: boolean) => boolean
   revealAnswer: () => void
   rateCard: (quality: number, note?: string) => Promise<void>
   exitReview: () => void
+  dismissSummary: () => void
+}
+
+export interface SessionRecord {
+  entryId: string
+  elapsedMs: number
+  quality: number
 }
 
 export function useReview(
@@ -71,6 +82,16 @@ export function useReview(
   const cardStartTime = ref(0)
   const elapsedMs = ref(0)
   let timerInterval: ReturnType<typeof setInterval> | null = null
+
+  const { addLog, loadLogs } = useReviewLogs()
+  loadLogs()
+
+  const sessionDone = ref(false)
+  const sessionRecords = ref<SessionRecord[]>([])
+
+  const totalSessionMs = computed(() =>
+    sessionRecords.value.reduce((sum, r) => sum + r.elapsedMs, 0),
+  )
 
   function startTimer() {
     cardStartTime.value = Date.now()
@@ -125,14 +146,23 @@ export function useReview(
     return (reviewIndex.value / reviewQueue.value.length) * 100
   })
 
-  function startReview(force = false) {
+  function startReview(force = false): boolean {
     forceAll.value = force
-    const pool = entries.value
+
+    const pool = force ? entries.value : dueEntries.value
+
+    if (pool.length === 0) {
+      return false
+    }
+
     reviewQueue.value = shuffle(pool)
     mode.value = 'review'
     reviewIndex.value = 0
     answered.value = false
+    sessionDone.value = false
+    sessionRecords.value = []
     startTimer()
+    return true
   }
 
   function revealAnswer() {
@@ -154,20 +184,35 @@ export function useReview(
 
     applySM2(entry, quality)
     await db.put(JSON.parse(JSON.stringify(entry)))
+    await addLog(entry.id, quality)
+
+    sessionRecords.value.push({
+      entryId: entry.id,
+      elapsedMs: elapsedMs.value,
+      quality,
+    })
 
     if (reviewIndex.value < reviewQueue.value.length - 1) {
       reviewIndex.value++
       answered.value = false
       startTimer()
     } else {
-      reviewIndex.value++
+      sessionDone.value = true
+      stopTimer()
     }
   }
 
   function exitReview() {
     mode.value = 'edit'
     answered.value = false
+    sessionDone.value = false
     stopTimer()
+  }
+
+  function dismissSummary() {
+    sessionDone.value = false
+    sessionRecords.value = []
+    mode.value = 'edit'
   }
 
   return {
@@ -182,9 +227,13 @@ export function useReview(
     isReviewing,
     progress,
     progressPercent,
+    sessionDone,
+    sessionRecords,
+    totalSessionMs,
     startReview,
     revealAnswer,
     rateCard,
     exitReview,
+    dismissSummary,
   }
 }

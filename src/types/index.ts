@@ -17,3 +17,10 @@ export interface NoteEntry {
   lastReviewDate?: number
   nextReviewDate?: number
 }
+
+export interface ReviewLog {
+  id: string
+  entryId: string
+  timestamp: number
+  quality: number | string
+}

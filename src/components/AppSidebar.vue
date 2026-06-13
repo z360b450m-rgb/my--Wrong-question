@@ -5,6 +5,7 @@ import type { SortKey, SortDir } from '@/composables/useFilter'
 import SubjectChips from './SubjectChips.vue'
 import TagDots from './TagDots.vue'
 import EntryList from './EntryList.vue'
+import { EASE_BUCKET_DEFS } from '@/composables/useStats'
 
 const props = defineProps<{
   entries: NoteEntry[]
@@ -12,10 +13,12 @@ const props = defineProps<{
   activeId: string | null
   activeSubject: string
   activeTag: string | null
+  activeMastery: string
   sortKey: SortKey
   sortDir: SortDir
   subjectMap: Record<string, number>
   tagMap: Record<string, number>
+  masteryMap: Record<string, number>
   dueCount: number
   mode: 'edit' | 'review'
   selectedIds: Set<string>
@@ -26,6 +29,7 @@ const emit = defineEmits<{
   select: [id: string]
   filterSubject: [subject: string]
   filterTag: [tag: string]
+  filterMastery: [label: string]
   quickCreate: [subject: string]
   rename: [id: string, newTitle: string]
   startReview: []
@@ -59,7 +63,11 @@ function handleSortSelect(key: SortKey) {
 }
 
 function handleSelectAll() {
-  emit('select-all', props.filteredEntries.map(e => e.id))
+  if (props.selectedCount === props.filteredEntries.length && props.selectedCount > 0) {
+    emit('deselect-all')
+  } else {
+    emit('select-all', props.filteredEntries.map(e => e.id))
+  }
   batchMenuOpen.value = false
 }
 
@@ -131,6 +139,31 @@ function cancelTags() {
         :tag-map="tagMap"
         @filter="emit('filterTag', $event)"
       />
+
+      <!-- Mastery filter -->
+      <div class="mt-3">
+        <h3 class="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-[0.5px] mb-2">掌握程度</h3>
+        <div class="flex flex-wrap gap-1">
+          <button
+            v-for="b in EASE_BUCKET_DEFS"
+            :key="b.label"
+            class="relative overflow-hidden px-2 py-0.5 rounded-full text-[11px] font-medium transition-all duration-300 ease-out active:scale-95 border-l-[3px]"
+            :class="activeMastery === b.label
+              ? 'text-white shadow-sm border-l-transparent'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+            :style="{
+              backgroundImage: `linear-gradient(to right, ${b.color}, ${b.color})`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'left center',
+              backgroundSize: activeMastery === b.label ? '100% 100%' : '0% 100%',
+              borderLeftColor: activeMastery === b.label ? 'transparent' : b.color,
+            }"
+            @click="emit('filterMastery', b.label)"
+          >
+            <span class="relative z-10">{{ b.label }} ({{ masteryMap[b.label] || 0 }})</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Entry list -->

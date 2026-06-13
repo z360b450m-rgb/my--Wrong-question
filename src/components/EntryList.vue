@@ -2,6 +2,7 @@
 import { ref, nextTick, computed, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SortKey } from '@/composables/useFilter'
+import { EASE_BUCKET_DEFS } from '@/composables/useStats'
 
 const props = defineProps<{
   entries: NoteEntry[]
@@ -78,6 +79,11 @@ function stripMd(s: string): string {
 function preview(s: string, max: number): string {
   const p = stripMd(s)
   return p.length > max ? p.slice(0, max) + '…' : p
+}
+
+function masteryColor(ef?: number): string | null {
+  if (ef === undefined) return null
+  return EASE_BUCKET_DEFS.find((b) => ef >= b.min && ef < b.max)?.color ?? null
 }
 
 function formatDate(ts: number): string {
@@ -205,13 +211,13 @@ onUnmounted(() => {
   <div
     v-for="(entry, idx) in entries"
     :key="entry.id"
-    class="entry-item flex items-center gap-1 mx-2 mb-0.5 px-2 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] select-none rounded-lg"
+    class="entry-item flex items-center gap-1 mx-2 mb-0.5 px-2.5 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] select-none rounded-lg"
     :class="{
-      '!bg-accent-light dark:!bg-indigo-950 !border-l-accent shadow-sm': entry.id === activeId,
+      '!bg-indigo-100 dark:!bg-indigo-900/40 !border-l-accent shadow-md ring-1 ring-accent/15': entry.id === activeId,
       'border-l-[#a78bfa] bg-purple-50/50 dark:bg-purple-950/30': selectedIds.has(entry.id) && entry.id !== activeId,
       'opacity-50': isCustomSort && dragId === entry.id,
       'border-t-2 border-t-accent': isCustomSort && dragOverId === entry.id,
-      'border-l-transparent hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:-translate-y-[1px]': !selectedIds.has(entry.id) && entry.id !== activeId,
+      'border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50': !selectedIds.has(entry.id) && entry.id !== activeId,
     }"
     :title="selectedIds.has(entry.id) ? undefined : 'Ctrl+点击选择 · Shift+点击范围选择'"
     :draggable="isCustomSort"
@@ -235,6 +241,13 @@ onUnmounted(() => {
       </svg>
     </div>
 
+    <!-- Mastery dot -->
+    <span
+      v-if="entry.easeFactor !== undefined"
+      class="w-2 h-2 rounded-full flex-shrink-0"
+      :style="{ backgroundColor: masteryColor(entry.easeFactor) }"
+    />
+
     <!-- Drag handle (custom sort only) -->
     <div
       v-if="isCustomSort"
@@ -252,6 +265,7 @@ onUnmounted(() => {
       <div
         v-if="renamingId !== entry.id"
         class="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-0.5 cursor-text"
+        :class="{ 'text-accent dark:text-indigo-300 font-semibold': entry.id === activeId }"
         @dblclick.stop="startRename(entry.id)"
       >
         {{ entry.title || preview(entry.question, 28) || '无题目' }}

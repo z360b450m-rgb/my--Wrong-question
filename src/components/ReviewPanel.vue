@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
+import type { SessionRecord } from '@/composables/useReview'
+import { EASE_BUCKET_DEFS } from '@/composables/useStats'
 
 const props = defineProps<{
-  entry: NoteEntry
+  entry: NoteEntry | undefined
   answered: boolean
   elapsedMs: number
   progress: string
@@ -11,6 +13,10 @@ const props = defineProps<{
   dueCount: number
   reviewedToday: number
   isReviewing: boolean
+  sessionDone: boolean
+  sessionRecords: SessionRecord[]
+  totalSessionMs: number
+  reviewQueue: NoteEntry[]
 }>()
 
 const emit = defineEmits<{
@@ -18,6 +24,7 @@ const emit = defineEmits<{
   rate: [quality: number, note: string]
   startReview: [force: boolean]
   exitReview: []
+  dismissSummary: []
   'mount-canvas': [el: HTMLElement]
 }>()
 
@@ -25,6 +32,54 @@ const showCorrect = ref(false)
 const note = ref('')
 const rated = ref(false)
 const questionContentRef = ref<HTMLDivElement | null>(null)
+const questionPanelEl = ref<HTMLDivElement | null>(null)
+const resizeH = ref<HTMLDivElement | null>(null)
+
+interface ResizeState {
+  startY: number
+  questionH: number
+  containerH: number
+}
+let resizeState: ResizeState | null = null
+
+function startResize(e: MouseEvent) {
+  e.preventDefault()
+  if (!questionPanelEl.value) return
+  const container = questionPanelEl.value.parentElement
+  if (!container) return
+  resizeState = {
+    startY: e.clientY,
+    questionH: questionPanelEl.value.offsetHeight,
+    containerH: container.offsetHeight,
+  }
+  resizeH.value?.classList.add('dragging')
+  window.addEventListener('mousemove', onResize)
+  window.addEventListener('mouseup', stopResize)
+}
+
+function onResize(e: MouseEvent) {
+  if (!resizeState || !questionPanelEl.value) return
+  const r = resizeState
+  const deltaY = e.clientY - r.startY
+  const gap = 60
+  const minQ = 80
+  const minA = 200
+  const maxQ = r.containerH - minA - gap
+  const newQH = Math.max(minQ, Math.min(maxQ, r.questionH + deltaY))
+  questionPanelEl.value.style.flex = '0 0 ' + newQH + 'px'
+}
+
+function stopResize() {
+  resizeH.value?.classList.remove('dragging')
+  resizeState = null
+  window.removeEventListener('mousemove', onResize)
+  window.removeEventListener('mouseup', stopResize)
+}
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onResize)
+  window.removeEventListener('mouseup', stopResize)
+})
 
 watch(() => props.entry, () => {
   showCorrect.value = false
@@ -61,12 +116,89 @@ function formatTime(ms: number): string {
   const sec = s % 60
   return `${m}:${sec.toString().padStart(2, '0')}`
 }
+
+function formatTotalTime(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  const m = Math.floor(s / 60)
+  if (m > 0) {
+    const sec = s % 60
+    return `${m} 分 ${sec} 秒`
+  }
+  return `${s} 秒`
+}
+
+function entryById(id: string): NoteEntry | undefined {
+  return props.reviewQueue.find((e) => e.id === id)
+}
+
+function masteryBucket(entry: NoteEntry | undefined) {
+  if (!entry || entry.easeFactor === undefined) return null
+  return EASE_BUCKET_DEFS.find((b) => entry.easeFactor! >= b.min && entry.easeFactor! < b.max) ?? null
+}
+
+const qualityLabels = ['遗忘', '错误', '勉强', '困难', '犹豫', '完美']
+const qualityColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e']
 </script>
 
 <template>
   <div class="flex-1 flex flex-col overflow-hidden p-4 gap-3">
+    <!-- Session summary -->
+    <template v-if="sessionDone">
+      <div class="flex-1 flex flex-col items-center overflow-y-auto">
+        <div class="flex flex-col items-center gap-2 py-6">
+          <div class="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">复习完成</h2>
+          <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <span>共 {{ sessionRecords.length }} 题</span>
+            <span>总用时 {{ formatTotalTime(totalSessionMs) }}</span>
+          </div>
+        </div>
+
+        <div class="w-full max-w-lg flex flex-col gap-2 pb-10">
+          <div
+            v-for="(rec, i) in sessionRecords"
+            :key="rec.entryId"
+            class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl"
+          >
+            <span class="text-[11px] text-gray-300 dark:text-gray-600 w-5 tabular-nums">{{ i + 1 }}</span>
+            <span
+              class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              :style="{ backgroundColor: rec.quality < qualityColors.length ? qualityColors[rec.quality] : '#9ca3af' }"
+            />
+            <div class="flex-1 min-w-0">
+              <div class="text-[13px] text-gray-800 dark:text-gray-200 truncate" v-html="entryById(rec.entryId)?.question || '(无题目)'" />
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ entryById(rec.entryId)?.subject || '' }}</span>
+                <span
+                  v-if="masteryBucket(entryById(rec.entryId))"
+                  class="text-[10px] px-1.5 py-px rounded-full text-white"
+                  :style="{ backgroundColor: masteryBucket(entryById(rec.entryId))!.color }"
+                >{{ masteryBucket(entryById(rec.entryId))!.label }}</span>
+              </div>
+            </div>
+            <span class="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0">{{ formatTime(rec.elapsedMs) }}</span>
+            <span
+              class="text-[11px] font-medium flex-shrink-0 w-8 text-right"
+              :style="{ color: rec.quality < qualityColors.length ? qualityColors[rec.quality] : '#9ca3af' }"
+            >{{ rec.quality < qualityLabels.length ? qualityLabels[rec.quality] : rec.quality }}</span>
+          </div>
+        </div>
+
+        <button
+          class="px-6 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:brightness-110 transition-all active:scale-95 mb-10"
+          @click="emit('dismissSummary')"
+        >
+          返回编辑
+        </button>
+      </div>
+    </template>
+
     <!-- Review card -->
-    <template v-if="entry">
+    <template v-else-if="entry">
       <!-- Progress bar + timer -->
       <div class="flex items-center gap-3 px-1 flex-shrink-0">
         <div class="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -83,8 +215,12 @@ function formatTime(ms: number): string {
         <span class="text-[10px] text-gray-300 dark:text-gray-600 tabular-nums">今日已复习 {{ reviewedToday }}</span>
       </div>
 
-      <!-- Question (2/3 of space) -->
-      <div class="flex-[2] min-h-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden">
+      <!-- Question -->
+      <div
+        ref="questionPanelEl"
+        class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden"
+        style="flex: 2 1 0%; min-height: 80px"
+      >
         <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800 bg-[#fafbfc] dark:bg-gray-800 flex-shrink-0">
           <span class="w-2 h-2 rounded-full bg-accent" />
           题目
@@ -95,6 +231,15 @@ function formatTime(ms: number): string {
             <div class="px-3.5 py-3 text-sm leading-relaxed md-content" v-html="entry.question || '<span class=\'text-gray-300\'>无题目内容</span>'" />
           </div>
         </div>
+      </div>
+
+      <!-- Resize handle: question <-> answers -->
+      <div
+        ref="resizeH"
+        class="resize-h flex-shrink-0 h-2 cursor-row-resize bg-transparent hover:bg-accent/20 transition-colors relative -my-0.5 rounded"
+        @mousedown="startResize($event)"
+      >
+        <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-0.5 rounded-sm bg-gray-200 dark:bg-gray-600 resize-h-bar" />
       </div>
 
       <!-- Wrong answer: expanded by default, clickable header when collapsed -->
@@ -175,3 +320,12 @@ function formatTime(ms: number): string {
     <div v-else class="flex-1 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">暂无复习卡片</div>
   </div>
 </template>
+
+<style scoped>
+.resize-h-bar { background: #e5e7eb; }
+.dark .resize-h-bar { background: #4b5563; }
+.resize-h:hover .resize-h-bar,
+.resize-h.dragging .resize-h-bar { background: #6366f1; }
+.dark .resize-h:hover .resize-h-bar,
+.dark .resize-h.dragging .resize-h-bar { background: #818cf8; }
+</style>

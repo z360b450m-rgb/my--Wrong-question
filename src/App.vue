@@ -6,6 +6,7 @@ import { useFilter } from './composables/useFilter'
 import { useReview } from './composables/useReview'
 import { useDrawing, PEN_COLORS } from './composables/useDrawing'
 import { useBackup } from './composables/useBackup'
+import { useExport } from './composables/useExport'
 import { useStats } from './composables/useStats'
 import { useKeyboard } from './composables/useKeyboard'
 import { useDarkMode } from './composables/useDarkMode'
@@ -15,6 +16,7 @@ import NoteEditor from './components/NoteEditor.vue'
 import ReviewPanel from './components/ReviewPanel.vue'
 import DeleteModal from './components/DeleteModal.vue'
 import StatsPanel from './components/StatsPanel.vue'
+import SettingsPanel from './components/SettingsPanel.vue'
 import UnsavedModal from './components/UnsavedModal.vue'
 import AppToast from './components/AppToast.vue'
 
@@ -56,14 +58,17 @@ const {
 const {
   activeSubject,
   activeTag,
+  activeMastery,
   searchQuery,
   sortKey,
   sortDir,
   filteredEntries,
   subjectMap,
   tagMap,
+  masteryMap,
   setSubject,
   setTag,
+  setMastery,
   setSearch,
   setSort,
 } = useFilter(entries)
@@ -79,10 +84,14 @@ const {
   isReviewing,
   progress,
   progressPercent,
+  sessionDone,
+  sessionRecords,
+  totalSessionMs,
   startReview,
   revealAnswer,
   rateCard,
   exitReview,
+  dismissSummary,
 } = useReview(entries)
 
 const {
@@ -104,10 +113,13 @@ const {
 } = useDrawing()
 
 const { exportJSON, importJSON } = useBackup(entries, showToast)
+const { exportPDF } = useExport(showToast)
 const { isDark, toggleDark } = useDarkMode()
 
 const stats = useStats(entries)
 const statsOpen = ref(false)
+const settingsOpen = ref(false)
+const isElectron = computed(() => typeof window !== 'undefined' && !!window.electronAPI)
 
 const mainArea = ref<HTMLElement | null>(null)
 
@@ -182,6 +194,28 @@ function navigate(dir: number) {
   }
 }
 
+let lastWheelNav = 0
+
+function onWheel(e: WheelEvent) {
+  if (mode.value !== 'edit' || !activeId.value) return
+
+  // If inside a scrollable panel that still has room to scroll, let it be
+  const scrollable = (e.target as HTMLElement).closest('.overflow-y-auto')
+  if (scrollable) {
+    const el = scrollable as HTMLElement
+    const atTop = el.scrollTop <= 1
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+    if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return
+  }
+
+  // Throttle rapid wheel spins
+  const now = Date.now()
+  if (now - lastWheelNav < 250) return
+  lastWheelNav = now
+
+  navigate(e.deltaY > 0 ? 1 : -1)
+}
+
 function checkDirtyThen(action: () => void, nextAction: 'select' | 'create' | 'review') {
   if (isDirty.value) {
     pendingAction.value = nextAction
@@ -236,6 +270,10 @@ function handleBatchExport() {
   batchExport(Array.from(selectedIds.value))
 }
 
+function handleExportPDF() {
+  exportPDF(entries.value)
+}
+
 async function handleChangeDataDir() {
   if (!window.electronAPI) {
     showToast('此功能仅在桌面端可用')
@@ -258,8 +296,12 @@ function handleSelectEntry(id: string) {
 }
 
 function handleStartReview(force = false) {
+  if (!force && dueCount.value === 0) {
+    showToast('今日复习已完成')
+    return
+  }
   checkDirtyThen(
-    () => startReview(force),
+    () => { startReview(force) },
     'review',
   )
 }
@@ -328,6 +370,8 @@ watch(activeId, (newId) => {
       :sort-dir="sortDir"
       :subject-map="subjectMap"
       :tag-map="tagMap"
+      :active-mastery="activeMastery"
+      :mastery-map="masteryMap"
       :due-count="dueCount"
       :mode="mode"
       :selected-ids="selectedIds"
@@ -335,6 +379,7 @@ watch(activeId, (newId) => {
       @select="handleSelectEntry"
       @filter-subject="setSubject"
       @filter-tag="setTag"
+      @filter-mastery="setMastery"
       @quick-create="handleCreate"
       @rename="updateEntryTitle"
       @start-review="handleStartReview"
@@ -373,11 +418,11 @@ watch(activeId, (newId) => {
         @toggleDrawing="toggleDrawing"
         @toggleStats="statsOpen = !statsOpen"
         @exportJSON="exportJSON"
+        @exportPDF="handleExportPDF"
         @importJSON="importJSON"
-        @changeDataDir="handleChangeDataDir"
       />
 
-      <div ref="mainArea" class="flex-1 flex flex-col min-h-0 canvas-host">
+      <div ref="mainArea" class="flex-1 flex flex-col min-h-0 canvas-host" @wheel="onWheel">
         <NoteEditor
           v-if="mode === 'edit' && activeEntry"
           :entry="activeEntry"
@@ -398,10 +443,15 @@ watch(activeId, (newId) => {
           :due-count="dueCount"
           :reviewed-today="reviewedToday"
           :is-reviewing="isReviewing"
+          :session-done="sessionDone"
+          :session-records="sessionRecords"
+          :total-session-ms="totalSessionMs"
+          :review-queue="reviewQueue"
           @reveal="revealAnswer"
           @rate="(q: number, note: string) => rateCard(q, note)"
           @start-review="(force: boolean) => handleStartReview(force)"
           @exit-review="handleExitReview"
+          @dismiss-summary="dismissSummary"
           @mount-canvas="el => mountCanvas(el)"
         />
 
@@ -549,22 +599,27 @@ watch(activeId, (newId) => {
       />
     </Transition>
 
+    <Transition name="stats">
+      <SettingsPanel
+        v-if="settingsOpen"
+        :is-dark="isDark"
+        :is-electron="isElectron"
+        @close="settingsOpen = false"
+        @toggle-dark="toggleDark"
+        @change-data-dir="handleChangeDataDir"
+      />
+    </Transition>
+
     <AppToast :message="toastMsg" />
 
-    <!-- Dark mode toggle (bottom-left) -->
+    <!-- Settings button (bottom-left) -->
     <button
-      class="fixed bottom-6 left-6 z-50 flex items-center justify-center w-9 h-9 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:scale-110 active:scale-90 transition-all duration-200 ease-out shadow-sm"
-      title="切换暗色模式"
-      @click="toggleDark"
+      class="fixed bottom-6 left-6 z-50 flex items-center justify-center w-9 h-9 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:scale-110 active:scale-90 transition-all duration-200 ease-out"
+      title="设置"
+      @click="settingsOpen = !settingsOpen"
     >
-      <svg v-if="!isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-      </svg>
-      <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </button>
   </div>

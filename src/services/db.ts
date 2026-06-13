@@ -1,7 +1,8 @@
-import type { NoteEntry } from '@/types'
+import type { NoteEntry, ReviewLog } from '@/types'
 
 const STORE = 'entries'
 const SNAP_STORE = 'snapshots'
+const REVIEW_LOG_STORE = 'reviewLogs'
 
 // ── Electron file-based storage (primary) ──────────────────────
 
@@ -47,12 +48,24 @@ const fileDb = {
   async deleteAllSnapshots(): Promise<void> {
     await window.electronAPI!.deleteAllSnapshots()
   },
+
+  async getAllReviewLogs(): Promise<ReviewLog[]> {
+    return window.electronAPI!.getAllReviewLogs()
+  },
+
+  async addReviewLog(log: ReviewLog): Promise<void> {
+    await window.electronAPI!.addReviewLog(log)
+  },
+
+  async deleteReviewLogsByEntry(entryId: string): Promise<void> {
+    await window.electronAPI!.deleteReviewLogsByEntry(entryId)
+  },
 }
 
 // ── IndexedDB fallback (browser dev mode) ───────────────────────
 
 const DB_NAME = 'CuotiDB'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -66,6 +79,10 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(SNAP_STORE)) {
         db.createObjectStore(SNAP_STORE, { keyPath: 'entryId' })
+      }
+      if (!db.objectStoreNames.contains(REVIEW_LOG_STORE)) {
+        const rlStore = db.createObjectStore(REVIEW_LOG_STORE, { keyPath: 'id' })
+        rlStore.createIndex('entryId', 'entryId', { unique: false })
       }
     }
     req.onsuccess = () => resolve(req.result)
@@ -125,6 +142,26 @@ const idbDb = {
 
   deleteAllSnapshots(): Promise<void> {
     return tx('readwrite', (s) => s.clear(), SNAP_STORE).then(() => undefined)
+  },
+
+  getAllReviewLogs(): Promise<ReviewLog[]> {
+    return tx('readonly', (s) => s.getAll(), REVIEW_LOG_STORE)
+  },
+
+  addReviewLog(log: ReviewLog): Promise<void> {
+    return tx('readwrite', (s) => s.put(log), REVIEW_LOG_STORE).then(() => undefined)
+  },
+
+  deleteReviewLogsByEntry(entryId: string): Promise<void> {
+    return tx('readwrite', (s) => {
+      const idx = s.index('entryId')
+      return idx.getAllKeys(entryId)
+    }, REVIEW_LOG_STORE).then((keys) => {
+      const deletePromises = (keys as string[]).map((key) =>
+        tx('readwrite', (s2) => s2.delete(key), REVIEW_LOG_STORE),
+      )
+      return Promise.all(deletePromises).then(() => undefined)
+    })
   },
 }
 

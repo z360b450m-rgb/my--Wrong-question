@@ -1,5 +1,6 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import type { NoteEntry } from '@/types'
+import { EASE_BUCKET_DEFS } from '@/composables/useStats'
 
 export type SortKey = 'updatedAt' | 'createdAt' | 'subject' | 'title' | 'custom'
 export type SortDir = 'asc' | 'desc'
@@ -7,14 +8,17 @@ export type SortDir = 'asc' | 'desc'
 export interface FilterState {
   activeSubject: Ref<string>
   activeTag: Ref<string | null>
+  activeMastery: Ref<string>
   searchQuery: Ref<string>
   sortKey: Ref<SortKey>
   sortDir: Ref<SortDir>
   filteredEntries: ComputedRef<NoteEntry[]>
   subjectMap: ComputedRef<Record<string, number>>
   tagMap: ComputedRef<Record<string, number>>
+  masteryMap: ComputedRef<Record<string, number>>
   setSubject: (s: string) => void
   setTag: (t: string) => void
+  setMastery: (label: string) => void
   setSearch: (q: string) => void
   setSort: (key: SortKey, dir?: SortDir) => void
 }
@@ -22,6 +26,7 @@ export interface FilterState {
 export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
   const activeSubject = ref('__all__')
   const activeTag = ref<string | null>(null)
+  const activeMastery = ref('__all__')
   const searchQuery = ref('')
   const sortKey = ref<SortKey>('updatedAt')
   const sortDir = ref<SortDir>('desc')
@@ -39,6 +44,16 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
 
     if (activeTag.value) {
       list = list.filter((e) => e.tags?.includes(activeTag.value!))
+    }
+
+    if (activeMastery.value !== '__all__') {
+      const bucket = EASE_BUCKET_DEFS.find((b) => b.label === activeMastery.value)
+      if (bucket) {
+        list = list.filter((e) => {
+          const ef = e.easeFactor
+          return ef !== undefined && ef >= bucket.min && ef < bucket.max
+        })
+      }
     }
 
     if (searchQuery.value.trim()) {
@@ -107,6 +122,22 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
     activeTag.value = activeTag.value === t ? null : t
   }
 
+  const masteryMap = computed(() => {
+    const map: Record<string, number> = {}
+    for (const b of EASE_BUCKET_DEFS) map[b.label] = 0
+    entries.value.forEach((e) => {
+      const ef = e.easeFactor
+      if (ef === undefined) return
+      const bucket = EASE_BUCKET_DEFS.find((b) => ef >= b.min && ef < b.max)
+      if (bucket) map[bucket.label]++
+    })
+    return map
+  })
+
+  function setMastery(label: string) {
+    activeMastery.value = activeMastery.value === label ? '__all__' : label
+  }
+
   function setSearch(q: string) {
     searchQuery.value = q
   }
@@ -123,14 +154,17 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
   return {
     activeSubject,
     activeTag,
+    activeMastery,
     searchQuery,
     sortKey,
     sortDir,
     filteredEntries,
     subjectMap,
     tagMap,
+    masteryMap,
     setSubject,
     setTag,
+    setMastery,
     setSearch,
     setSort,
   }

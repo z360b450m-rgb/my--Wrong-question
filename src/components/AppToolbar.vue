@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 defineProps<{
   activeId: string | null
   answersHidden: boolean
@@ -25,9 +27,19 @@ const emit = defineEmits<{
   toggleDrawing: []
   toggleStats: []
   exportJSON: []
+  exportPDF: []
   importJSON: []
-  changeDataDir: []
 }>()
+
+const moreMenuOpen = ref(false)
+
+function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'delete') {
+  if (action === 'export-json') emit('exportJSON')
+  else if (action === 'export-pdf') emit('exportPDF')
+  else if (action === 'import') emit('importJSON')
+  else if (action === 'delete') emit('delete')
+  moreMenuOpen.value = false
+}
 </script>
 
 <template>
@@ -167,19 +179,6 @@ const emit = defineEmits<{
         </template>
       </button>
 
-      <!-- Delete -->
-      <button
-        v-if="activeId"
-        style="-webkit-app-region: no-drag;"
-        class="flex items-center gap-1 px-3.5 py-1.5 rounded-md text-[13px] font-medium text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-all duration-200 ease-out active:scale-95"
-        @click="emit('delete')"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-        </svg>
-        删除
-      </button>
-
       <!-- Save -->
       <button
         v-if="activeId"
@@ -199,41 +198,69 @@ const emit = defineEmits<{
         <span v-if="isDirty" class="w-1.5 h-1.5 rounded-full bg-white dark:bg-gray-900 ml-0.5" />
       </button>
 
-      <!-- Import/Export -->
+      <!-- More menu (···) -->
       <div class="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-      <button
-        style="-webkit-app-region: no-drag;"
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
-        title="导出 JSON"
-        @click="emit('exportJSON')"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        导出
-      </button>
-      <button
-        style="-webkit-app-region: no-drag;"
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
-        title="导入 JSON"
-        @click="emit('importJSON')"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="3 10 8 15 13 10"/><line x1="8" y1="15" x2="8" y2="3"/>
-        </svg>
-        导入
-      </button>
-      <button
-        style="-webkit-app-region: no-drag;"
-        class="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-[13px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
-        title="更改数据保存目录"
-        @click="emit('changeDataDir')"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        数据目录
-      </button>
+      <div class="relative">
+        <button
+          style="-webkit-app-region: no-drag;"
+          class="flex items-center justify-center w-8 h-8 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+          title="更多"
+          @click.stop="moreMenuOpen = !moreMenuOpen"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+          </svg>
+        </button>
+
+        <div
+          v-if="moreMenuOpen"
+          class="absolute right-0 top-10 z-30 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 py-1 min-w-[150px]"
+          @click.stop
+        >
+          <button
+            class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
+            @click="moreAction('export-json')"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            导出 JSON
+          </button>
+          <button
+            class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
+            @click="moreAction('export-pdf')"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            导出 PDF (打印)
+          </button>
+          <button
+            class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-out active:scale-95"
+            @click="moreAction('import')"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="3 10 8 15 13 10"/><line x1="8" y1="15" x2="8" y2="3"/>
+            </svg>
+            导入 JSON
+          </button>
+          <div class="border-t border-gray-100 dark:border-gray-800 my-1" />
+          <button
+            class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900 dark:bg-red-950/50 transition-all duration-200 ease-out active:scale-95"
+            :class="{ 'opacity-30 pointer-events-none': !activeId }"
+            :disabled="!activeId"
+            @click="moreAction('delete')"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            </svg>
+            删除
+          </button>
+        </div>
+
+        <!-- Click outside to close -->
+        <div v-if="moreMenuOpen" class="fixed inset-0 z-20" @click="moreMenuOpen = false" />
+      </div>
     </template>
 
     <!-- Review mode: progress + reveal button -->
