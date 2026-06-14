@@ -1,5 +1,16 @@
+export interface Notebook {
+  id: string
+  name: string
+  description: string
+  instructions: string
+  sortOrder?: number
+  createdAt: number
+  updatedAt: number
+}
+
 export interface NoteEntry {
   id: string
+  notebookId: string
   title: string
   question: string
   wrongAnswer: string
@@ -10,8 +21,10 @@ export interface NoteEntry {
   sortOrder?: number
   createdAt: number
   updatedAt: number
-  // SRS fields (SM-2 algorithm)
+  // SRS fields
   reviewCount?: number
+  consecutivePasses?: number
+  masteryLevel?: number
   easeFactor?: number
   interval?: number
   lastReviewDate?: number

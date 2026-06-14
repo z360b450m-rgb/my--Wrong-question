@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { reactive, ref, watch } from 'vue'
+import { useReviewSettings } from '@/composables/useReviewSettings'
+
 defineProps<{
   isDark: boolean
   isElectron: boolean
@@ -9,6 +12,21 @@ const emit = defineEmits<{
   toggleDark: []
   changeDataDir: []
 }>()
+
+const { settings, defaults } = useReviewSettings()
+
+const draft = reactive({ ...settings.value })
+const reviewExpanded = ref(false)
+
+// Reset draft when settings panel opens
+watch(settings, (val) => {
+  Object.assign(draft, val)
+}, { immediate: true })
+
+function save() {
+  Object.assign(settings.value, { ...draft })
+  emit('close')
+}
 </script>
 
 <template>
@@ -17,7 +35,7 @@ const emit = defineEmits<{
     <div class="fixed inset-0 z-40 bg-black/15" @click="emit('close')" />
 
     <!-- Panel -->
-    <div class="fixed right-0 top-0 bottom-0 z-50 w-[300px] bg-white dark:bg-gray-900 shadow-xl border-l border-gray-100 dark:border-gray-800 overflow-y-auto">
+    <div class="fixed right-0 top-0 bottom-0 z-50 w-[320px] bg-white dark:bg-gray-900 shadow-xl border-l border-gray-100 dark:border-gray-800 overflow-y-auto">
     <!-- Header -->
     <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
       <h2 class="text-[15px] font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
@@ -40,7 +58,7 @@ const emit = defineEmits<{
       <!-- Dark mode -->
       <div class="flex items-center justify-between">
         <div>
-          <div class="text-[13px] font-medium text-gray-700 dark:text-gray-200">深色模式</div>
+          <div class="text-[13px] font-medium text-gray-700 dark:text-gray-200">护眼模式</div>
           <div class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">切换界面颜色主题</div>
         </div>
         <button
@@ -53,6 +71,117 @@ const emit = defineEmits<{
             :class="isDark ? 'left-[22px]' : 'left-0.5'"
           />
         </button>
+      </div>
+
+      <!-- Review settings -->
+      <div class="pt-4 border-t border-gray-100 dark:border-gray-800">
+        <button
+          class="w-full flex items-center justify-between text-[13px] font-medium text-gray-700 dark:text-gray-200 hover:text-accent transition-colors"
+          @click="reviewExpanded = !reviewExpanded"
+        >
+          <span>复习设置</span>
+          <svg
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            class="transition-transform duration-200"
+            :class="reviewExpanded ? 'rotate-180' : ''"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        <div v-if="reviewExpanded" class="mt-3 space-y-3">
+          <div class="text-[11px] text-gray-400 dark:text-gray-500">
+            基于艾宾浩斯遗忘曲线设置复习间隔：1天 → 3天 → 7天 → 放大……
+          </div>
+
+          <div>
+            <label class="text-[12px] font-medium text-gray-600 dark:text-gray-300">首次复习</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="number"
+                min="0"
+                max="365"
+                :value="draft.firstReviewDays"
+                @input="(e: Event) => { const v = parseInt((e.target as HTMLInputElement).value); if (v >= 0) draft.firstReviewDays = v }"
+                class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-accent/40 transition-colors"
+              />
+              <span class="text-[12px] text-gray-400 dark:text-gray-500">天后复习</span>
+              <span class="text-[11px] text-accent/70 ml-auto">建议 {{ defaults.firstReviewDays }} 天</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[12px] font-medium text-gray-600 dark:text-gray-300">未掌握知识点</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="number"
+                min="1"
+                max="365"
+                :value="draft.unmasteredDays"
+                @input="(e: Event) => { const v = parseInt((e.target as HTMLInputElement).value); if (v > 0) draft.unmasteredDays = v }"
+                class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-accent/40 transition-colors"
+              />
+              <span class="text-[12px] text-gray-400 dark:text-gray-500">天后复习</span>
+              <span class="text-[11px] text-accent/70 ml-auto">建议 {{ defaults.unmasteredDays }} 天</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[12px] font-medium text-gray-600 dark:text-gray-300">已掌握知识点</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="number"
+                min="1"
+                max="365"
+                :value="draft.masteredDays"
+                @input="(e: Event) => { const v = parseInt((e.target as HTMLInputElement).value); if (v > 0) draft.masteredDays = v }"
+                class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-accent/40 transition-colors"
+              />
+              <span class="text-[12px] text-gray-400 dark:text-gray-500">天后复习</span>
+              <span class="text-[11px] text-accent/70 ml-auto">建议 {{ defaults.masteredDays }} 天</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[12px] font-medium text-gray-600 dark:text-gray-300">增长系数</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="number"
+                min="1.1"
+                max="5"
+                step="0.1"
+                :value="draft.growthFactor"
+                @input="(e: Event) => { const v = parseFloat((e.target as HTMLInputElement).value); if (v >= 1.1) draft.growthFactor = v }"
+                class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-accent/40 transition-colors"
+              />
+              <span class="text-[12px] text-gray-400 dark:text-gray-500">倍</span>
+              <span class="text-[11px] text-accent/70 ml-auto">建议 {{ defaults.growthFactor }}x</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[12px] font-medium text-gray-600 dark:text-gray-300">最大间隔</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="number"
+                min="7"
+                max="730"
+                :value="draft.maxInterval"
+                @input="(e: Event) => { const v = parseInt((e.target as HTMLInputElement).value); if (v > 0) draft.maxInterval = v }"
+                class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-accent/40 transition-colors"
+              />
+              <span class="text-[12px] text-gray-400 dark:text-gray-500">天</span>
+              <span class="text-[11px] text-accent/70 ml-auto">建议 {{ defaults.maxInterval }} 天</span>
+            </div>
+          </div>
+
+        <button
+          class="w-full mt-3 px-4 py-2 rounded-lg bg-accent text-white text-[13px] font-medium hover:brightness-110 transition-all active:scale-[0.98]"
+          @click="save"
+        >
+          保存复习设置
+        </button>
+      </div>
       </div>
 
       <!-- Data directory -->

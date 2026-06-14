@@ -2,6 +2,7 @@ import { ref, computed, onUnmounted, type Ref, type ComputedRef } from 'vue'
 import type { NoteEntry } from '@/types'
 import { db } from '@/services/db'
 import { useReviewLogs } from '@/composables/useReviewLogs'
+import { useReviewSettings } from '@/composables/useReviewSettings'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -22,26 +23,46 @@ function isToday(ts: number): boolean {
   )
 }
 
-function applySM2(entry: NoteEntry, quality: number) {
-  const ef = entry.easeFactor ?? 2.5
-  const count = entry.reviewCount ?? 0
+export function intervalForLevel(passes: number, entry: NoteEntry, firstReviewDays: number, masteredDays: number, growthFactor: number, maxInterval: number): number {
+  if (passes === 0) return firstReviewDays
+  if (passes === 1) return firstReviewDays
+  if (passes === 2) return masteredDays
+  if (passes === 3) return Math.round(masteredDays * growthFactor)
+  return Math.min(Math.round((entry.interval ?? masteredDays) * growthFactor), maxInterval)
+}
 
-  if (quality >= 3) {
-    if (count === 0) entry.interval = 1
-    else if (count === 1) entry.interval = 6
-    else entry.interval = Math.round((entry.interval ?? 1) * ef)
-    entry.reviewCount = count + 1
+function applyCustom(
+  entry: NoteEntry,
+  rating: string,
+  firstReviewDays: number,
+  unmasteredDays: number,
+  masteredDays: number,
+  growthFactor: number,
+  maxInterval: number,
+) {
+  const passes = entry.consecutivePasses ?? 0
+  entry.reviewCount = (entry.reviewCount ?? 0) + 1
+
+  if (rating === 'forgot') {
+    entry.consecutivePasses = 0
+    entry.interval = unmasteredDays
+    entry.masteryLevel = 0
+    entry.easeFactor = 1.3
+  } else if (rating === 'unfamiliar') {
+    entry.consecutivePasses = passes
+    entry.masteryLevel = Math.min(passes, 4)
+    entry.interval = intervalForLevel(passes, entry, firstReviewDays, masteredDays, growthFactor, maxInterval)
+    entry.easeFactor = 1.8
   } else {
-    entry.reviewCount = 0
-    entry.interval = 1
+    entry.consecutivePasses = passes + 1
+    const cp = entry.consecutivePasses
+    entry.masteryLevel = Math.min(cp, 4)
+    entry.interval = intervalForLevel(cp, entry, firstReviewDays, masteredDays, growthFactor, maxInterval)
+    entry.easeFactor = 2.5
   }
 
-  entry.easeFactor = Math.max(
-    1.3,
-    ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)),
-  )
   entry.lastReviewDate = Date.now()
-  entry.nextReviewDate = Date.now() + (entry.interval ?? 1) * 86400000
+  entry.nextReviewDate = Date.now() + entry.interval * 86400000
 }
 
 export interface ReviewState {
@@ -61,7 +82,7 @@ export interface ReviewState {
   totalSessionMs: ComputedRef<number>
   startReview: (force?: boolean) => boolean
   revealAnswer: () => void
-  rateCard: (quality: number, note?: string) => Promise<void>
+  rateCard: (rating: number | string, note?: string) => Promise<void>
   exitReview: () => void
   dismissSummary: () => void
 }
@@ -69,7 +90,7 @@ export interface ReviewState {
 export interface SessionRecord {
   entryId: string
   elapsedMs: number
-  quality: number
+  quality: number | string
 }
 
 export function useReview(
@@ -85,6 +106,8 @@ export function useReview(
 
   const { addLog, loadLogs } = useReviewLogs()
   loadLogs()
+
+  const { settings } = useReviewSettings()
 
   const sessionDone = ref(false)
   const sessionRecords = ref<SessionRecord[]>([])
@@ -170,7 +193,7 @@ export function useReview(
     stopTimer()
   }
 
-  async function rateCard(quality: number, note?: string) {
+  async function rateCard(rating: number | string, note?: string) {
     const card = currentCard.value
     if (!card) return
 
@@ -182,14 +205,14 @@ export function useReview(
       entry.wrongAnswer = (entry.wrongAnswer || '') + separator + note.trim()
     }
 
-    applySM2(entry, quality)
+    applyCustom(entry, rating as string, settings.value.firstReviewDays, settings.value.unmasteredDays, settings.value.masteredDays, settings.value.growthFactor, settings.value.maxInterval)
     await db.put(JSON.parse(JSON.stringify(entry)))
-    await addLog(entry.id, quality)
+    await addLog(entry.id, rating)
 
     sessionRecords.value.push({
       entryId: entry.id,
       elapsedMs: elapsedMs.value,
-      quality,
+      quality: rating,
     })
 
     if (reviewIndex.value < reviewQueue.value.length - 1) {

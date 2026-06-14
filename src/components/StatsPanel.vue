@@ -115,12 +115,12 @@ const hueStep = computed(() => {
       <!-- Accuracy distribution -->
       <div>
         <h3 class="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-[0.5px]">掌握程度</h3>
-        <div v-if="stats.easeBuckets.value.every(b => b.count === 0)" class="text-[12px] text-gray-400 dark:text-gray-500 text-center py-4">
+        <div v-if="stats.masteryBuckets.value.every(b => b.count === 0)" class="text-[12px] text-gray-400 dark:text-gray-500 text-center py-4">
           暂无复习数据
         </div>
         <div v-else class="space-y-2">
           <div
-            v-for="bucket in stats.easeBuckets.value"
+            v-for="bucket in stats.masteryBuckets.value"
             :key="bucket.label"
             class="flex items-center gap-2"
           >

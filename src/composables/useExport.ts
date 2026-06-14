@@ -49,7 +49,7 @@ export function useExport(onToast: (msg: string) => void) {
 </style>
 </head>
 <body>
-<h1>📖 错题本</h1>
+<h1>错题本</h1>
 <div class="date">导出日期：${now} · 共 ${entries.length} 题</div>
 ${Object.entries(groups)
   .map(
@@ -61,9 +61,9 @@ ${items
 <div class="card">
   <div class="card-title">${e.source || ''} ${e.tags.length > 0 ? '· ' + e.tags.join(', ') : ''}</div>
   <div class="question">${e.question || '(无题目)'}</div>
-  ${e.wrongAnswer ? `<div class="answer-label">❌ 我的答案</div><div class="wrong">${e.wrongAnswer}</div>` : ''}
+  ${e.wrongAnswer ? `<div class="answer-label">我的答案</div><div class="wrong">${e.wrongAnswer}</div>` : ''}
   ${e.wrongAnswer && e.correctAnswer ? '<hr>' : ''}
-  ${e.correctAnswer ? `<div class="answer-label">✅ 正确答案</div><div class="correct">${e.correctAnswer}</div>` : ''}
+  ${e.correctAnswer ? `<div class="answer-label">正确答案</div><div class="correct">${e.correctAnswer}</div>` : ''}
 </div>`,
   )
   .join('\n')}`,

@@ -1,8 +1,8 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import type { NoteEntry } from '@/types'
-import { EASE_BUCKET_DEFS } from '@/composables/useStats'
+import { MASTERY_LEVEL_DEFS, getMasteryLevel } from '@/composables/useStats'
 
-export type SortKey = 'updatedAt' | 'createdAt' | 'subject' | 'title' | 'custom'
+export type SortKey = 'updatedAt' | 'createdAt' | 'subject' | 'title' | 'custom' | 'shuffle'
 export type SortDir = 'asc' | 'desc'
 
 export interface FilterState {
@@ -30,8 +30,11 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
   const searchQuery = ref('')
   const sortKey = ref<SortKey>('updatedAt')
   const sortDir = ref<SortDir>('desc')
+  const shuffleSeed = ref(0)
 
   const filteredEntries = computed(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _seed = shuffleSeed.value // re-compute when shuffle is clicked again
     let list = [...entries.value]
 
     if (activeSubject.value !== '__all__') {
@@ -47,12 +50,9 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
     }
 
     if (activeMastery.value !== '__all__') {
-      const bucket = EASE_BUCKET_DEFS.find((b) => b.label === activeMastery.value)
+      const bucket = MASTERY_LEVEL_DEFS.find((b) => b.label === activeMastery.value)
       if (bucket) {
-        list = list.filter((e) => {
-          const ef = e.easeFactor
-          return ef !== undefined && ef >= bucket.min && ef < bucket.max
-        })
+        list = list.filter((e) => getMasteryLevel(e) === bucket.level)
       }
     }
 
@@ -87,6 +87,12 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
           if (ao !== bo) return (ao - bo) * dir
           return (a.updatedAt - b.updatedAt) * dir
         })
+        break
+      case 'shuffle':
+        for (let i = list.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[list[i], list[j]] = [list[j], list[i]]
+        }
         break
       default:
         list.sort((a, b) => (a.updatedAt - b.updatedAt) * dir)
@@ -124,11 +130,10 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
 
   const masteryMap = computed(() => {
     const map: Record<string, number> = {}
-    for (const b of EASE_BUCKET_DEFS) map[b.label] = 0
+    for (const b of MASTERY_LEVEL_DEFS) map[b.label] = 0
     entries.value.forEach((e) => {
-      const ef = e.easeFactor
-      if (ef === undefined) return
-      const bucket = EASE_BUCKET_DEFS.find((b) => ef >= b.min && ef < b.max)
+      const level = getMasteryLevel(e)
+      const bucket = MASTERY_LEVEL_DEFS.find(b => b.level === level)
       if (bucket) map[bucket.label]++
     })
     return map
@@ -143,6 +148,11 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
   }
 
   function setSort(key: SortKey, dir?: SortDir) {
+    if (key === 'shuffle') {
+      sortKey.value = 'shuffle'
+      shuffleSeed.value++
+      return
+    }
     if (sortKey.value === key && !dir) {
       sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
     } else {

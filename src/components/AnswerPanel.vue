@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
 import CameraCapture from './CameraCapture.vue'
+import ScreenshotPicker from './ScreenshotPicker.vue'
 
 const props = defineProps<{
   type: 'wrong' | 'correct'
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 const bodyRef = ref<HTMLDivElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const camOpen = ref(false)
+const screenshotOpen = ref(false)
 const wrapperRef = ref<HTMLDivElement | null>(null)
 
 const isWrong = props.type === 'wrong'
@@ -155,11 +157,16 @@ function onCameraCapture(dataUrl: string) {
   camOpen.value = false
   insertImageAtCursor(dataUrl)
 }
+
+function onScreenshotCapture(dataUrl: string) {
+  screenshotOpen.value = false
+  insertImageAtCursor(dataUrl)
+}
 </script>
 
 <template>
   <div
-    class="answer-panel flex-1 flex flex-col overflow-hidden rounded-lg border"
+    class="answer-panel flex-1 flex flex-col overflow-hidden rounded-lg border group"
     :class="panelBg"
   >
     <div
@@ -168,6 +175,38 @@ function onCameraCapture(dataUrl: string) {
     >
       <span class="w-2 h-2 rounded-full" :class="dotClass" />
       {{ label }}
+
+      <!-- Image tools (top-right) -->
+      <div v-if="!showHidden" class="ml-auto flex items-center gap-0.5">
+        <button
+          class="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-all active:scale-90"
+          title="截屏"
+          @click="screenshotOpen = true"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </button>
+        <button
+          class="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-all active:scale-90"
+          title="拍照"
+          @click="camOpen = true"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
+        <button
+          class="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-all active:scale-90"
+          title="导入图片"
+          @click="openFilePicker"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </button>
+        <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileChange" />
+      </div>
     </div>
 
     <div v-if="!showHidden" ref="wrapperRef" class="flex-1 relative group">
@@ -182,32 +221,6 @@ function onCameraCapture(dataUrl: string) {
         @drop="onDrop"
         @blur="emit('blur')"
       />
-
-      <!-- Image tools -->
-      <div class="absolute right-2 bottom-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <button
-          class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all active:scale-90"
-          title="拍照"
-          @click="camOpen = true"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-        </button>
-        <button
-          class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all active:scale-90"
-          title="导入图片"
-          @click="openFilePicker"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-        </button>
-        <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileChange" />
-      </div>
     </div>
 
     <div
@@ -224,6 +237,12 @@ function onCameraCapture(dataUrl: string) {
     v-if="camOpen"
     @capture="onCameraCapture"
     @close="camOpen = false"
+  />
+
+  <ScreenshotPicker
+    v-if="screenshotOpen"
+    @capture="onScreenshotCapture"
+    @close="screenshotOpen = false"
   />
 </template>
 

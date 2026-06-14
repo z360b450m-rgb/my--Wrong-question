@@ -25,4 +25,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAllReviewLogs: () => ipcRenderer.invoke('storage:getAllReviewLogs'),
   addReviewLog: (log) => ipcRenderer.invoke('storage:addReviewLog', log),
   deleteReviewLogsByEntry: (entryId) => ipcRenderer.invoke('storage:deleteReviewLogsByEntry', entryId),
+
+  // Desktop capture
+  getDesktopSources: () => ipcRenderer.invoke('desktop:getSources'),
+
+  // Notebook API
+  getAllNotebooks: () => ipcRenderer.invoke('storage:getAllNotebooks'),
+  putNotebook: (notebook) => ipcRenderer.invoke('storage:putNotebook', notebook),
+  deleteNotebook: (id) => ipcRenderer.invoke('storage:deleteNotebook', id),
 });

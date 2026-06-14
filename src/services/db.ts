@@ -1,8 +1,9 @@
-import type { NoteEntry, ReviewLog } from '@/types'
+import type { NoteEntry, ReviewLog, Notebook } from '@/types'
 
 const STORE = 'entries'
 const SNAP_STORE = 'snapshots'
 const REVIEW_LOG_STORE = 'reviewLogs'
+const NOTEBOOK_STORE = 'notebooks'
 
 // ── Electron file-based storage (primary) ──────────────────────
 
@@ -60,12 +61,24 @@ const fileDb = {
   async deleteReviewLogsByEntry(entryId: string): Promise<void> {
     await window.electronAPI!.deleteReviewLogsByEntry(entryId)
   },
+
+  async getAllNotebooks(): Promise<Notebook[]> {
+    return window.electronAPI!.getAllNotebooks()
+  },
+
+  async putNotebook(notebook: Notebook): Promise<void> {
+    await window.electronAPI!.putNotebook(notebook)
+  },
+
+  async deleteNotebook(id: string): Promise<void> {
+    await window.electronAPI!.deleteNotebook(id)
+  },
 }
 
 // ── IndexedDB fallback (browser dev mode) ───────────────────────
 
 const DB_NAME = 'CuotiDB'
-const DB_VERSION = 3
+const DB_VERSION = 5
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -83,6 +96,9 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(REVIEW_LOG_STORE)) {
         const rlStore = db.createObjectStore(REVIEW_LOG_STORE, { keyPath: 'id' })
         rlStore.createIndex('entryId', 'entryId', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(NOTEBOOK_STORE)) {
+        db.createObjectStore(NOTEBOOK_STORE, { keyPath: 'id' })
       }
     }
     req.onsuccess = () => resolve(req.result)
@@ -162,6 +178,18 @@ const idbDb = {
       )
       return Promise.all(deletePromises).then(() => undefined)
     })
+  },
+
+  getAllNotebooks(): Promise<Notebook[]> {
+    return tx('readonly', (s) => s.getAll(), NOTEBOOK_STORE)
+  },
+
+  putNotebook(notebook: Notebook): Promise<void> {
+    return tx('readwrite', (s) => s.put(notebook), NOTEBOOK_STORE).then(() => undefined)
+  },
+
+  deleteNotebook(id: string): Promise<void> {
+    return tx('readwrite', (s) => s.delete(id), NOTEBOOK_STORE).then(() => undefined)
   },
 }
 

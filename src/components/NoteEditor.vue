@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject, type Re
 import type { NoteEntry } from '@/types'
 import { useReviewLogs } from '@/composables/useReviewLogs'
 import CameraCapture from './CameraCapture.vue'
+import ScreenshotPicker from './ScreenshotPicker.vue'
 import AnswerPanel from './AnswerPanel.vue'
 
 const props = defineProps<{
@@ -78,6 +79,7 @@ function onQuestionPaste(e: ClipboardEvent) {
 
 // Image tools for question panel
 const qCamOpen = ref(false)
+const qScreenshotOpen = ref(false)
 const qFileInput = ref<HTMLInputElement | null>(null)
 
 function insertQuestionImage(src: string) {
@@ -142,6 +144,11 @@ function onQuestionFileChange() {
 
 function onQuestionCamCapture(dataUrl: string) {
   qCamOpen.value = false
+  insertQuestionImage(dataUrl)
+}
+
+function onQuestionScreenshotCapture(dataUrl: string) {
+  qScreenshotOpen.value = false
   insertQuestionImage(dataUrl)
 }
 
@@ -386,16 +393,48 @@ onUnmounted(() => {
     <!-- Question panel -->
     <div
       ref="questionPanelEl"
-      class="flex-shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden"
+      class="flex-shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden group"
       style="height: 35%"
     >
       <div class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800 bg-[#fafbfc] dark:bg-gray-800 flex-shrink-0">
         <span class="w-2 h-2 rounded-full bg-accent" />
         题目
+
+        <!-- Image tools (top-right) -->
+        <div v-if="!drawingEnabled" class="ml-auto flex items-center gap-0.5">
+          <button
+            class="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-all active:scale-90"
+            title="截屏"
+            @click="qScreenshotOpen = true"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </button>
+          <button
+            class="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-all active:scale-90"
+            title="拍照"
+            @click="qCamOpen = true"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+            </svg>
+          </button>
+          <button
+            class="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-all active:scale-90"
+            title="导入图片"
+            @click="openQuestionFilePicker"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </button>
+          <input ref="qFileInput" type="file" accept="image/*" class="hidden" @change="onQuestionFileChange" />
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto">
         <div ref="questionContentRef" style="position: relative; min-height: 100%;">
-          <div class="relative group h-full">
+          <div class="relative h-full">
             <div
               ref="questionBody"
               class="px-3.5 py-3 text-sm leading-relaxed md-content outline-none min-h-[60px] h-full"
@@ -407,28 +446,6 @@ onUnmounted(() => {
             @drop="onQuestionDrop"
             @blur="onBlur"
           />
-            <!-- Image tools -->
-            <div v-if="!drawingEnabled" class="absolute right-2 bottom-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button
-                class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all active:scale-90"
-                title="拍照"
-                @click="qCamOpen = true"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-                </svg>
-              </button>
-              <button
-                class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all active:scale-90"
-                title="导入图片"
-                @click="openQuestionFilePicker"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                </svg>
-              </button>
-              <input ref="qFileInput" type="file" accept="image/*" class="hidden" @change="onQuestionFileChange" />
-            </div>
           </div>
         </div>
       </div>
@@ -488,6 +505,12 @@ onUnmounted(() => {
       v-if="qCamOpen"
       @capture="onQuestionCamCapture"
       @close="qCamOpen = false"
+    />
+
+    <ScreenshotPicker
+      v-if="qScreenshotOpen"
+      @capture="onQuestionScreenshotCapture"
+      @close="qScreenshotOpen = false"
     />
   </div>
 </template>

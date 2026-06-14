@@ -1,3 +1,10 @@
+interface DesktopSource {
+  id: string
+  name: string
+  thumbnail: string
+  appIcon: string | null
+}
+
 interface Window {
   electronAPI?: {
     platform: string
@@ -17,5 +24,9 @@ interface Window {
     getAllReviewLogs: () => Promise<any[]>
     addReviewLog: (log: any) => Promise<void>
     deleteReviewLogsByEntry: (entryId: string) => Promise<void>
+    getAllNotebooks: () => Promise<any[]>
+    putNotebook: (notebook: any) => Promise<void>
+    deleteNotebook: (id: string) => Promise<void>
+    getDesktopSources: () => Promise<DesktopSource[]>
   }
 }

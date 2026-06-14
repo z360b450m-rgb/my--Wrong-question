@@ -18,12 +18,38 @@ function dayLabel(offset: number): string {
   return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
 }
 
-export const EASE_BUCKET_DEFS = [
-  { label: '未掌握', min: 0, max: 1.71, color: '#ef4444' },
-  { label: '正常', min: 1.71, max: 2.1, color: '#f59e0b' },
-  { label: '简单', min: 2.1, max: 2.5, color: '#6366f1' },
-  { label: '已掌握', min: 2.5, max: Infinity, color: '#22c55e' },
+export const MASTERY_LEVEL_DEFS = [
+  { level: -1, label: '未复习', color: '#9ca3af' },
+  { level: 0, label: '未掌握', color: '#ef4444' },
+  { level: 1, label: '一次复习', color: '#f59e0b' },
+  { level: 2, label: '二次复习', color: '#6366f1' },
+  { level: 3, label: '三次复习', color: '#8b5cf6' },
+  { level: 4, label: '已掌握', color: '#22c55e' },
 ]
+
+export function getMasteryLabel(entry: NoteEntry): string {
+  const level = getMasteryLevel(entry)
+  return MASTERY_LEVEL_DEFS.find(b => b.level === level)?.label ?? '未复习'
+}
+
+export function getMasteryColor(entry: NoteEntry): string {
+  const level = getMasteryLevel(entry)
+  return MASTERY_LEVEL_DEFS.find(b => b.level === level)?.color ?? '#9ca3af'
+}
+
+export function getMasteryLevel(entry: NoteEntry): number {
+  if (entry.masteryLevel !== undefined) {
+    if (entry.masteryLevel === 0 && (entry.reviewCount ?? 0) === 0) return -1
+    return entry.masteryLevel
+  }
+  // Legacy fallback for entries without explicit masteryLevel
+  const ef = entry.easeFactor
+  if (ef === undefined) return -1
+  if (ef >= 2.5) return 4
+  if (ef >= 2.1) return 2
+  if (ef >= 1.71) return 1
+  return -1
+}
 
 export interface StatsState {
   totalCount: ComputedRef<number>
@@ -32,7 +58,7 @@ export interface StatsState {
   totalReviews: ComputedRef<number>
   subjectBars: ComputedRef<{ name: string; count: number; pct: number }[]>
   weeklyActivity: ComputedRef<{ day: string; count: number; max: number }[]>
-  easeBuckets: ComputedRef<{ label: string; count: number; pct: number; color: string }[]>
+  masteryBuckets: ComputedRef<{ label: string; count: number; pct: number; color: string }[]>
 }
 
 export function useStats(entries: Ref<NoteEntry[]>): StatsState {
@@ -97,14 +123,10 @@ export function useStats(entries: Ref<NoteEntry[]>): StatsState {
     }))
   })
 
-  const easeBuckets = computed(() => {
-    const reviewed = entries.value.filter((e) => e.easeFactor !== undefined)
-    const total = reviewed.length || 1
-    return EASE_BUCKET_DEFS.map((b) => {
-      const count = reviewed.filter((e) => {
-        const ef = e.easeFactor ?? 2.5
-        return ef >= b.min && ef < b.max
-      }).length
+  const masteryBuckets = computed(() => {
+    const total = entries.value.length || 1
+    return MASTERY_LEVEL_DEFS.map((b) => {
+      const count = entries.value.filter((e) => getMasteryLevel(e) === b.level).length
       return { ...b, count, pct: Math.round((count / total) * 100) }
     })
   })
@@ -116,6 +138,6 @@ export function useStats(entries: Ref<NoteEntry[]>): StatsState {
     totalReviews,
     subjectBars,
     weeklyActivity,
-    easeBuckets,
+    masteryBuckets,
   }
 }

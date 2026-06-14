@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -40,11 +40,16 @@ function getDataFilePath() {
 function readData() {
   const filePath = getDataFilePath();
   try {
-    if (!fs.existsSync(filePath)) return { entries: [], snapshots: [], reviewLogs: [] };
+    if (!fs.existsSync(filePath)) return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] };
     const raw = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(raw);
+    const data = JSON.parse(raw);
+    if (!data.notebooks) data.notebooks = [];
+    if (!data.entries) data.entries = [];
+    if (!data.snapshots) data.snapshots = [];
+    if (!data.reviewLogs) data.reviewLogs = [];
+    return data;
   } catch {
-    return { entries: [], snapshots: [], reviewLogs: [] };
+    return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] };
   }
 }
 
@@ -58,6 +63,22 @@ function writeData(data) {
 }
 
 // Register IPC handlers
+// ── Desktop capture ─────────────────────────────────────────────────
+
+ipcMain.handle('desktop:getSources', async () => {
+  const sources = await desktopCapturer.getSources({
+    types: ['screen', 'window'],
+    thumbnailSize: { width: 320, height: 240 },
+    fetchWindowIcons: true,
+  });
+  return sources.map((s) => ({
+    id: s.id,
+    name: s.name,
+    thumbnail: s.thumbnail.toDataURL(),
+    appIcon: s.appIcon ? s.appIcon.toDataURL() : null,
+  }));
+});
+
 ipcMain.handle('storage:getAll', () => {
   const data = readData();
   return data.entries;
@@ -135,6 +156,34 @@ ipcMain.handle('storage:addReviewLog', (_e, log) => {
 ipcMain.handle('storage:deleteReviewLogsByEntry', (_e, entryId) => {
   const data = readData();
   data.reviewLogs = (data.reviewLogs || []).filter((l) => l.entryId !== entryId);
+  writeData(data);
+});
+
+// ── Notebook handlers ─────────────────────────────────────────────
+
+ipcMain.handle('storage:getAllNotebooks', () => {
+  return readData().notebooks || [];
+});
+
+ipcMain.handle('storage:putNotebook', (_e, notebook) => {
+  const data = readData();
+  if (!data.notebooks) data.notebooks = [];
+  const idx = data.notebooks.findIndex((n) => n.id === notebook.id);
+  if (idx >= 0) {
+    data.notebooks[idx] = notebook;
+  } else {
+    data.notebooks.push(notebook);
+  }
+  writeData(data);
+});
+
+ipcMain.handle('storage:deleteNotebook', (_e, id) => {
+  const data = readData();
+  data.notebooks = (data.notebooks || []).filter((n) => n.id !== id);
+  data.entries = (data.entries || []).filter((e) => e.notebookId !== id);
+  const deletedIds = new Set((data.entries || []).map((e) => e.id));
+  data.snapshots = (data.snapshots || []).filter((s) => deletedIds.has(s.entryId));
+  data.reviewLogs = (data.reviewLogs || []).filter((l) => deletedIds.has(l.entryId));
   writeData(data);
 });
 

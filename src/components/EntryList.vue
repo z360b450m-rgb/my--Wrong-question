@@ -2,7 +2,7 @@
 import { ref, nextTick, computed, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SortKey } from '@/composables/useFilter'
-import { EASE_BUCKET_DEFS } from '@/composables/useStats'
+import { getMasteryColor } from '@/composables/useStats'
 
 const props = defineProps<{
   entries: NoteEntry[]
@@ -81,9 +81,8 @@ function preview(s: string, max: number): string {
   return p.length > max ? p.slice(0, max) + '…' : p
 }
 
-function masteryColor(ef?: number): string | null {
-  if (ef === undefined) return null
-  return EASE_BUCKET_DEFS.find((b) => ef >= b.min && ef < b.max)?.color ?? null
+function masteryColor(entry: NoteEntry): string {
+  return getMasteryColor(entry)
 }
 
 function formatDate(ts: number): string {
@@ -93,6 +92,17 @@ function formatDate(ts: number): string {
   if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
   if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
   return new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+}
+
+function formatNextReview(ts?: number): { text: string; urgent: boolean } | null {
+  if (!ts) return null
+  const now = Date.now()
+  const diffDays = Math.ceil((ts - now) / 86400000)
+  if (diffDays <= 0) return { text: '今天', urgent: true }
+  if (diffDays === 1) return { text: '明天', urgent: false }
+  if (diffDays <= 7) return { text: diffDays + '天后', urgent: false }
+  if (diffDays <= 30) return { text: diffDays + '天后', urgent: false }
+  return { text: new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }), urgent: false }
 }
 
 // Checkbox click: toggle select or shift+click range select
@@ -243,9 +253,9 @@ onUnmounted(() => {
 
     <!-- Mastery dot -->
     <span
-      v-if="entry.easeFactor !== undefined"
+      v-if="entry.masteryLevel !== undefined || entry.easeFactor !== undefined"
       class="w-2 h-2 rounded-full flex-shrink-0"
-      :style="{ backgroundColor: masteryColor(entry.easeFactor) }"
+      :style="{ backgroundColor: masteryColor(entry) }"
     />
 
     <!-- Drag handle (custom sort only) -->
@@ -264,11 +274,24 @@ onUnmounted(() => {
       <!-- Title (view mode) -->
       <div
         v-if="renamingId !== entry.id"
-        class="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-0.5 cursor-text"
-        :class="{ 'text-accent dark:text-indigo-300 font-semibold': entry.id === activeId }"
-        @dblclick.stop="startRename(entry.id)"
+        class="flex items-center gap-1.5 mb-0.5 min-w-0"
       >
-        {{ entry.title || preview(entry.question, 28) || '无题目' }}
+        <span
+          class="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-text"
+          :class="{ 'text-accent dark:text-indigo-300 font-semibold': entry.id === activeId }"
+          @dblclick.stop="startRename(entry.id)"
+        >
+          {{ entry.title || preview(entry.question, 28) || '无题目' }}
+        </span>
+        <span
+          v-if="formatNextReview(entry.nextReviewDate)"
+          class="text-[10px] px-1.5 py-px rounded-full flex-shrink-0 font-medium"
+          :class="formatNextReview(entry.nextReviewDate)!.urgent
+            ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'"
+        >
+          {{ formatNextReview(entry.nextReviewDate)!.text }}
+        </span>
       </div>
       <!-- Title (edit mode) -->
       <input

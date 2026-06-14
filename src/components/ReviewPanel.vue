@@ -2,7 +2,7 @@
 import { ref, watch, nextTick, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SessionRecord } from '@/composables/useReview'
-import { EASE_BUCKET_DEFS } from '@/composables/useStats'
+import { getMasteryColor, getMasteryLabel } from '@/composables/useStats'
 
 const props = defineProps<{
   entry: NoteEntry | undefined
@@ -21,7 +21,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   reveal: []
-  rate: [quality: number, note: string]
+  rate: [rating: number | string, note: string]
   startReview: [force: boolean]
   exitReview: []
   dismissSummary: []
@@ -101,14 +101,16 @@ function showWrong() {
   showCorrect.value = false
 }
 
-const ratings = [
-  { q: 0, label: '重来', desc: '完全忘记', color: 'bg-red-500 hover:bg-red-600' },
-  { q: 1, label: '困难', desc: '严重错误', color: 'bg-orange-500 hover:bg-orange-600' },
-  { q: 2, label: '勉强', desc: '较大遗漏', color: 'bg-amber-500 hover:bg-amber-600' },
-  { q: 3, label: '一般', desc: '有些犹豫', color: 'bg-yellow-500 hover:bg-yellow-600' },
-  { q: 4, label: '良好', desc: '基本正确', color: 'bg-lime-500 hover:bg-lime-600' },
-  { q: 5, label: '完美', desc: '完全掌握', color: 'bg-emerald-500 hover:bg-emerald-600' },
+const customRatings = [
+  { r: 'forgot', key: '1', label: '完全未掌握', desc: '重新开始', color: 'bg-red-500 hover:bg-red-600' },
+  { r: 'unfamiliar', key: '2', label: '不熟练', desc: '维持当前等级', color: 'bg-amber-500 hover:bg-amber-600' },
+  { r: 'mastered', key: '3', label: '已掌握', desc: '晋级', color: 'bg-emerald-500 hover:bg-emerald-600' },
 ]
+
+function currentMasteryHint(): string {
+  if (!props.entry) return ''
+  return `当前: ${getMasteryLabel(props.entry)}`
+}
 
 function formatTime(ms: number): string {
   const s = Math.floor(ms / 1000)
@@ -132,12 +134,28 @@ function entryById(id: string): NoteEntry | undefined {
 }
 
 function masteryBucket(entry: NoteEntry | undefined) {
-  if (!entry || entry.easeFactor === undefined) return null
-  return EASE_BUCKET_DEFS.find((b) => entry.easeFactor! >= b.min && entry.easeFactor! < b.max) ?? null
+  if (!entry) return null
+  return { label: getMasteryLabel(entry), color: getMasteryColor(entry) }
 }
 
 const qualityLabels = ['遗忘', '错误', '勉强', '困难', '犹豫', '完美']
 const qualityColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e']
+
+function ratingLabel(q: number | string): string {
+  if (typeof q === 'string') {
+    const map: Record<string, string> = { forgot: '完全未掌握', unfamiliar: '不熟练', mastered: '已掌握' }
+    return map[q] || q
+  }
+  return qualityLabels[q] ?? String(q)
+}
+
+function ratingColor(q: number | string): string {
+  if (typeof q === 'string') {
+    const map: Record<string, string> = { forgot: '#ef4444', unfamiliar: '#f59e0b', mastered: '#22c55e' }
+    return map[q] || '#9ca3af'
+  }
+  return qualityColors[q] ?? '#9ca3af'
+}
 </script>
 
 <template>
@@ -167,7 +185,7 @@ const qualityColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#
             <span class="text-[11px] text-gray-300 dark:text-gray-600 w-5 tabular-nums">{{ i + 1 }}</span>
             <span
               class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              :style="{ backgroundColor: rec.quality < qualityColors.length ? qualityColors[rec.quality] : '#9ca3af' }"
+              :style="{ backgroundColor: ratingColor(rec.quality) }"
             />
             <div class="flex-1 min-w-0">
               <div class="text-[13px] text-gray-800 dark:text-gray-200 truncate" v-html="entryById(rec.entryId)?.question || '(无题目)'" />
@@ -182,9 +200,9 @@ const qualityColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#
             </div>
             <span class="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0">{{ formatTime(rec.elapsedMs) }}</span>
             <span
-              class="text-[11px] font-medium flex-shrink-0 w-8 text-right"
-              :style="{ color: rec.quality < qualityColors.length ? qualityColors[rec.quality] : '#9ca3af' }"
-            >{{ rec.quality < qualityLabels.length ? qualityLabels[rec.quality] : rec.quality }}</span>
+              class="text-[11px] font-medium flex-shrink-0 w-16 text-right"
+              :style="{ color: ratingColor(rec.quality) }"
+            >{{ ratingLabel(rec.quality) }}</span>
           </div>
         </div>
 
@@ -294,18 +312,24 @@ const qualityColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#
         />
       </div>
 
+      <!-- Current mastery hint -->
+      <div v-if="answered && !rated" class="flex-shrink-0 text-[11px] text-gray-400 dark:text-gray-500 text-center">
+        {{ currentMasteryHint() }}
+      </div>
+
       <!-- Rating buttons -->
       <div v-if="answered && !rated" class="flex-shrink-0 flex gap-2">
         <button
-          v-for="r in ratings"
-          :key="r.q"
+          v-for="r in customRatings"
+          :key="r.r"
           class="flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-lg text-white text-xs font-medium transition-all hover:brightness-110 active:scale-[0.97]"
           :class="r.color"
-          :title="r.desc"
-          @click="rated = true; emit('rate', r.q, note)"
+          :title="`按 ${r.key} —— ${r.desc}`"
+          @click="rated = true; emit('rate', r.r, note)"
         >
-          <span class="text-sm font-bold">{{ r.q }}</span>
-          <span>{{ r.label }}</span>
+          <span class="text-lg font-bold">{{ r.key }}</span>
+          <span class="text-[11px]">{{ r.label }}</span>
+          <span class="text-[10px] opacity-70">{{ r.desc }}</span>
         </button>
       </div>
 
