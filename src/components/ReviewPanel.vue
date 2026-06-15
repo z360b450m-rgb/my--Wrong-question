@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onUnmounted } from 'vue'
+import { ref, watch, nextTick, onUnmounted, computed } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SessionRecord } from '@/composables/useReview'
 import { getMasteryColor, getMasteryLabel } from '@/composables/useStats'
+import { sanitizeHtml } from '@/utils/sanitize'
 
 const props = defineProps<{
   entry: NoteEntry | undefined
@@ -31,6 +32,14 @@ const emit = defineEmits<{
 const showCorrect = ref(false)
 const note = ref('')
 const rated = ref(false)
+
+const sanitizedQuestion = computed(() => sanitizeHtml(props.entry?.question || '') || '<span class=\'text-gray-300\'>无题目内容</span>')
+const sanitizedWrongAnswer = computed(() => sanitizeHtml(props.entry?.wrongAnswer || '') || '<span class=\'text-gray-300 dark:text-gray-600\'>无内容</span>')
+const sanitizedCorrectAnswer = computed(() => sanitizeHtml(props.entry?.correctAnswer || '') || '<span class=\'text-gray-300 dark:text-gray-600\'>无内容</span>')
+
+function sanitizedFallback(html: string | undefined, fallback: string): string {
+  return sanitizeHtml(html || '') || fallback
+}
 const questionContentRef = ref<HTMLDivElement | null>(null)
 const questionPanelEl = ref<HTMLDivElement | null>(null)
 const resizeH = ref<HTMLDivElement | null>(null)
@@ -188,7 +197,7 @@ function ratingColor(q: number | string): string {
               :style="{ backgroundColor: ratingColor(rec.quality) }"
             />
             <div class="flex-1 min-w-0">
-              <div class="text-[13px] text-gray-800 dark:text-gray-200 truncate" v-html="entryById(rec.entryId)?.question || '(无题目)'" />
+              <div class="text-[13px] text-gray-800 dark:text-gray-200 truncate" v-html="sanitizedFallback(entryById(rec.entryId)?.question, '(无题目)')" />
               <div class="flex items-center gap-2 mt-0.5">
                 <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ entryById(rec.entryId)?.subject || '' }}</span>
                 <span
@@ -246,7 +255,7 @@ function ratingColor(q: number | string): string {
         </div>
         <div class="flex-1 overflow-y-auto">
           <div ref="questionContentRef" style="position: relative; min-height: 100%;">
-            <div class="px-3.5 py-3 text-sm leading-relaxed md-content" v-html="entry.question || '<span class=\'text-gray-300\'>无题目内容</span>'" />
+            <div class="px-3.5 py-3 text-sm leading-relaxed md-content" v-html="sanitizedQuestion" />
           </div>
         </div>
       </div>
@@ -273,7 +282,7 @@ function ratingColor(q: number | string): string {
           错误答案
           <span v-if="showCorrect" class="ml-auto text-[10px] text-red-500 dark:text-red-400">点击查看</span>
         </div>
-        <div v-if="!showCorrect" class="flex-1 overflow-y-auto px-3.5 py-3 text-sm leading-relaxed md-content text-gray-800 dark:text-gray-200" v-html="entry.wrongAnswer || '<span class=\'text-gray-300 dark:text-gray-600\'>无内容</span>'" />
+        <div v-if="!showCorrect" class="flex-1 overflow-y-auto px-3.5 py-3 text-sm leading-relaxed md-content text-gray-800 dark:text-gray-200" v-html="sanitizedWrongAnswer" />
         <div v-else class="flex items-center justify-center py-4">
           <span class="text-sm font-medium text-red-500 dark:text-red-400">点击显示错误答案</span>
         </div>
@@ -295,7 +304,7 @@ function ratingColor(q: number | string): string {
         <div
           v-if="showCorrect"
           class="flex-1 overflow-y-auto px-3.5 py-3 text-sm leading-relaxed md-content text-gray-800 dark:text-gray-200"
-          v-html="entry.correctAnswer || '<span class=\'text-gray-300 dark:text-gray-600\'>无内容</span>'"
+          v-html="sanitizedCorrectAnswer"
         />
         <div v-else class="flex items-center justify-center py-4">
           <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">点击显示正确答案</span>
