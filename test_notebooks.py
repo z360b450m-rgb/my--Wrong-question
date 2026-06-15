@@ -21,8 +21,8 @@ with sync_playwright() as p:
     else:
         print("FAIL: Create button not found")
 
-    # Click create button
-    page.locator('button:has-text("新建错题本")').click()
+    # Click create button (use .first to avoid strict-mode ambiguity with 2 buttons)
+    page.locator('button:has-text("新建错题本")').first.click()
     page.wait_for_timeout(300)
 
     html2 = page.content()

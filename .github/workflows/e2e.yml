@@ -37,7 +37,7 @@ jobs:
 
       - name: Start Vite dev server
         run: |
-          npx vite --host 0.0.0.0 &
+          npx vite --host localhost &
           # Wait for dev server to be ready
           for i in $(seq 1 20); do
             if curl -s http://localhost:5173 > /dev/null; then
@@ -46,6 +46,10 @@ jobs:
             fi
             echo "Waiting for dev server... ($i)"
             sleep 2
+            if [ $i -eq 20 ]; then
+              echo "Failed to start Vite dev server"
+              exit 1
+            fi
           done
 
       - name: Run E2E tests
