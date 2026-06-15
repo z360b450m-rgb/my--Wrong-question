@@ -127,6 +127,11 @@ function showWrong() {
   showCorrect.value = false
 }
 
+function rate(r: string, n: string) {
+  rated.value = true
+  emit('rate', r, n)
+}
+
 const customRatings = [
   {
     r: 'forgot',
@@ -439,10 +444,7 @@ function ratingColor(q: number | string): string {
           class="flex-1 flex flex-col items-center gap-0.5 py-2.5 rounded-lg text-white text-xs font-medium transition-all hover:brightness-110 active:scale-[0.97]"
           :class="r.color"
           :title="`按 ${r.key} —— ${r.desc}`"
-          @click="
-            rated = true
-            emit('rate', r.r, note)
-          "
+          @click="rate(r.r, note)"
         >
           <span class="text-lg font-bold">{{ r.key }}</span>
           <span class="text-[11px]">{{ r.label }}</span>

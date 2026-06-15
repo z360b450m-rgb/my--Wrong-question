@@ -36,6 +36,31 @@ const resizeV = ref<HTMLDivElement | null>(null)
 
 let suppressInput = false
 
+// Helpers so template @event handlers stay single-statement (Vue compiler no ASI)
+function onSubjectInput(e: Event) {
+  props.entry.subject = (e.target as HTMLInputElement).value
+  emit('update')
+}
+function onSourceInput(e: Event) {
+  props.entry.source = (e.target as HTMLInputElement).value
+  emit('update')
+}
+function onTagsInput(e: Event) {
+  props.entry.tags = (e.target as HTMLInputElement).value
+    .split(',')
+    .map((t: string) => t.trim())
+    .filter(Boolean)
+  emit('update')
+}
+function onWrongAnswer(val: string) {
+  props.entry.wrongAnswer = val
+  emit('update')
+}
+function onCorrectAnswer(val: string) {
+  props.entry.correctAnswer = val
+  emit('update')
+}
+
 function onQuestionInput() {
   if (suppressInput) return
   if (questionBody.value) {
@@ -326,10 +351,7 @@ onUnmounted(() => {
         class="border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] rounded-lg px-2.5 py-1.5 text-xs outline-none text-gray-800 dark:text-brand-light focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all w-[100px]"
         placeholder="学科（如：言语）"
         :value="entry.subject"
-        @input="
-          entry.subject = ($event.target as HTMLInputElement).value
-          emit('update')
-        "
+        @input="onSubjectInput($event)"
         @blur="onBlur"
       />
       <input
@@ -337,10 +359,7 @@ onUnmounted(() => {
         class="border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] rounded-lg px-2.5 py-1.5 text-xs outline-none text-gray-800 dark:text-brand-light focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all w-[120px]"
         placeholder="来源（如：月考）"
         :value="entry.source"
-        @input="
-          entry.source = ($event.target as HTMLInputElement).value
-          emit('update')
-        "
+        @input="onSourceInput($event)"
         @blur="onBlur"
       />
       <input
@@ -348,13 +367,7 @@ onUnmounted(() => {
         class="flex-1 min-w-[140px] border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] rounded-lg px-2.5 py-1.5 text-xs outline-none text-gray-800 dark:text-brand-light focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
         placeholder="标签，逗号分隔"
         :value="entry.tags.join(', ')"
-        @input="
-          entry.tags = ($event.target as HTMLInputElement).value
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-          emit('update')
-        "
+        @input="onTagsInput($event)"
         @blur="onBlur"
       />
     </div>
@@ -541,10 +554,7 @@ onUnmounted(() => {
           :hidden="false"
           :model-value="entry.wrongAnswer"
           :entry-id="entry.id"
-          @update:model-value="
-            entry.wrongAnswer = $event
-            emit('update')
-          "
+          @update:model-value="onWrongAnswer($event)"
           @reveal="emit('reveal')"
           @blur="onBlur"
         />
@@ -568,10 +578,7 @@ onUnmounted(() => {
           :hidden="answersHidden"
           :model-value="entry.correctAnswer"
           :entry-id="entry.id"
-          @update:model-value="
-            entry.correctAnswer = $event
-            emit('update')
-          "
+          @update:model-value="onCorrectAnswer($event)"
           @reveal="emit('reveal')"
           @blur="onBlur"
         />
