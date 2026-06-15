@@ -73,7 +73,7 @@ function onDragEnd() {
 function stripMd(s: string): string {
   return (s || '')
     .replace(/!\[.*?\]\(.*?\)/g, '[图片]')
-    .replace(/[#*`~>\[\]|]/g, '')
+    .replace(/[#*`~>[\]|]/g, '')
     .replace(/\n+/g, ' ')
     .trim()
 }
@@ -104,7 +104,10 @@ function formatNextReview(ts?: number): { text: string; urgent: boolean } | null
   if (diffDays === 1) return { text: '明天', urgent: false }
   if (diffDays <= 7) return { text: diffDays + '天后', urgent: false }
   if (diffDays <= 30) return { text: diffDays + '天后', urgent: false }
-  return { text: new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }), urgent: false }
+  return {
+    text: new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+    urgent: false,
+  }
 }
 
 // Checkbox click: toggle select or shift+click range select
@@ -175,7 +178,7 @@ function onDocumentMouseDown(e: MouseEvent) {
   if (!renamingId.value) return
   const input = getRenameInput()
   if (input && input.contains(e.target as Node)) return
-  const entry = props.entries.find(en => en.id === renamingId.value)
+  const entry = props.entries.find((en) => en.id === renamingId.value)
   if (entry) finishRename(entry, true)
 }
 
@@ -217,8 +220,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
-  <div v-if="entries.length === 0" class="p-6 text-center text-gray-400 dark:text-gray-500 text-xs">
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <div
+    v-if="entries.length === 0"
+    class="p-6 text-center text-gray-400 dark:text-brand-mid text-xs"
+  >
     暂无错题
   </div>
   <div
@@ -226,11 +232,14 @@ onUnmounted(() => {
     :key="entry.id"
     class="entry-item flex items-center gap-1 mx-2 mb-0.5 px-2.5 py-2.5 cursor-pointer transition-all duration-200 border-l-[3px] select-none rounded-lg"
     :class="{
-      '!bg-indigo-100 dark:!bg-indigo-900/40 !border-l-accent shadow-md ring-1 ring-accent/15': entry.id === activeId,
-      'border-l-[#a78bfa] bg-purple-50/50 dark:bg-purple-950/30': selectedIds.has(entry.id) && entry.id !== activeId,
+      '!bg-accent-light dark:!bg-accent/20 !border-l-accent shadow-md ring-1 ring-accent/15':
+        entry.id === activeId,
+      'border-l-accent bg-accent-light/50 dark:bg-accent/10':
+        selectedIds.has(entry.id) && entry.id !== activeId,
       'opacity-50': isCustomSort && dragId === entry.id,
       'border-t-2 border-t-accent': isCustomSort && dragOverId === entry.id,
-      'border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50': !selectedIds.has(entry.id) && entry.id !== activeId,
+      'border-l-transparent hover:bg-gray-50 dark:hover:bg-[#1e1e1c]/50':
+        !selectedIds.has(entry.id) && entry.id !== activeId,
     }"
     :title="selectedIds.has(entry.id) ? undefined : 'Ctrl+点击选择 · Shift+点击范围选择'"
     :draggable="isCustomSort"
@@ -244,12 +253,22 @@ onUnmounted(() => {
     <!-- Checkbox -->
     <div
       class="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded border-2 transition-all duration-200 ease-out active:scale-90 cursor-pointer"
-      :class="selectedIds.has(entry.id)
-        ? 'bg-accent border-accent text-white'
-        : 'border-gray-200 dark:border-gray-600 hover:border-accent dark:hover:border-accent'"
+      :class="
+        selectedIds.has(entry.id)
+          ? 'bg-accent border-accent text-white'
+          : 'border-gray-200 dark:border-[#2e2e2c] hover:border-accent dark:hover:border-accent'
+      "
       @click.stop="onCheckClick($event, entry.id, idx)"
     >
-      <svg v-if="selectedIds.has(entry.id)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+      <svg
+        v-if="selectedIds.has(entry.id)"
+        width="10"
+        height="10"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="3"
+      >
         <polyline points="20 6 9 17 4 12" />
       </svg>
     </div>
@@ -264,24 +283,24 @@ onUnmounted(() => {
     <!-- Drag handle (custom sort only) -->
     <div
       v-if="isCustomSort"
-      class="flex-shrink-0 text-gray-300 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing"
+      class="flex-shrink-0 text-gray-300 hover:text-gray-500 dark:text-brand-mid dark:hover:text-gray-300 cursor-grab active:cursor-grabbing"
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="9" cy="5" r="2"/><circle cx="15" cy="5" r="2"/>
-        <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
-        <circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/>
+        <circle cx="9" cy="5" r="2" />
+        <circle cx="15" cy="5" r="2" />
+        <circle cx="9" cy="12" r="2" />
+        <circle cx="15" cy="12" r="2" />
+        <circle cx="9" cy="19" r="2" />
+        <circle cx="15" cy="19" r="2" />
       </svg>
     </div>
 
     <div class="flex-1 min-w-0">
       <!-- Title (view mode) -->
-      <div
-        v-if="renamingId !== entry.id"
-        class="flex items-center gap-1.5 mb-0.5 min-w-0"
-      >
+      <div v-if="renamingId !== entry.id" class="flex items-center gap-1.5 mb-0.5 min-w-0">
         <span
           class="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-text"
-          :class="{ 'text-accent dark:text-indigo-300 font-semibold': entry.id === activeId }"
+          :class="{ 'text-accent font-semibold': entry.id === activeId }"
           @dblclick.stop="startRename(entry.id)"
         >
           {{ entry.title || preview(entry.question, 28) || '无题目' }}
@@ -289,9 +308,11 @@ onUnmounted(() => {
         <span
           v-if="formatNextReview(entry.nextReviewDate)"
           class="text-[10px] px-1.5 py-px rounded-full flex-shrink-0 font-medium"
-          :class="formatNextReview(entry.nextReviewDate)!.urgent
-            ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'"
+          :class="
+            formatNextReview(entry.nextReviewDate)!.urgent
+              ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+              : 'bg-gray-100 dark:bg-[#1e1e1c] text-gray-400 dark:text-brand-mid'
+          "
         >
           {{ formatNextReview(entry.nextReviewDate)!.text }}
         </span>
@@ -300,16 +321,16 @@ onUnmounted(() => {
       <input
         v-else
         data-renaming
-        class="text-[13px] font-medium w-[calc(100%+8px)] -ml-1 px-1 py-0.5 border border-accent rounded outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+        class="text-[13px] font-medium w-[calc(100%+8px)] -ml-1 px-1 py-0.5 border border-accent rounded outline-none bg-white dark:bg-[#141413] text-gray-800 dark:text-brand-light"
         :value="entry.title"
         @blur="finishRename(entry, true)"
         @keydown="onRenameKeydown($event, entry)"
       />
 
-      <div class="text-[11px] text-gray-400 dark:text-gray-500 flex gap-1.5 items-center">
+      <div class="text-[11px] text-gray-400 dark:text-brand-mid flex gap-1.5 items-center">
         <span
           v-if="entry.subject"
-          class="px-1.5 py-px rounded-sm bg-gray-100 dark:bg-gray-800 text-[10px]"
+          class="px-1.5 py-px rounded-sm bg-gray-100 dark:bg-[#1e1e1c] text-[10px]"
         >
           {{ entry.subject }}
         </span>

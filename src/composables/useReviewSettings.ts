@@ -24,11 +24,18 @@ function load(): ReviewSettings {
     if (!raw) return { ...DEFAULTS }
     const parsed = JSON.parse(raw)
     return {
-      firstReviewDays: typeof parsed.firstReviewDays === 'number' ? parsed.firstReviewDays : DEFAULTS.firstReviewDays,
-      unmasteredDays: typeof parsed.unmasteredDays === 'number' ? parsed.unmasteredDays : DEFAULTS.unmasteredDays,
-      masteredDays: typeof parsed.masteredDays === 'number' ? parsed.masteredDays : DEFAULTS.masteredDays,
-      growthFactor: typeof parsed.growthFactor === 'number' ? parsed.growthFactor : DEFAULTS.growthFactor,
-      maxInterval: typeof parsed.maxInterval === 'number' ? parsed.maxInterval : DEFAULTS.maxInterval,
+      firstReviewDays:
+        typeof parsed.firstReviewDays === 'number'
+          ? parsed.firstReviewDays
+          : DEFAULTS.firstReviewDays,
+      unmasteredDays:
+        typeof parsed.unmasteredDays === 'number' ? parsed.unmasteredDays : DEFAULTS.unmasteredDays,
+      masteredDays:
+        typeof parsed.masteredDays === 'number' ? parsed.masteredDays : DEFAULTS.masteredDays,
+      growthFactor:
+        typeof parsed.growthFactor === 'number' ? parsed.growthFactor : DEFAULTS.growthFactor,
+      maxInterval:
+        typeof parsed.maxInterval === 'number' ? parsed.maxInterval : DEFAULTS.maxInterval,
     }
   } catch {
     return { ...DEFAULTS }
@@ -38,9 +45,13 @@ function load(): ReviewSettings {
 const settings = ref<ReviewSettings>(load())
 
 // Persist on change
-watch(settings, (val) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
-}, { deep: true })
+watch(
+  settings,
+  (val) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
+  },
+  { deep: true },
+)
 
 // ===================================================================
 // @AI-GUIDE: 复习参数配置管理层

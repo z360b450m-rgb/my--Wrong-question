@@ -31,19 +31,17 @@ const dotClass = isWrong ? 'bg-red-400' : 'bg-emerald-400'
 const panelBg = isWrong
   ? 'bg-red-50 border-red-100 dark:bg-red-500/10 dark:border-red-500/20'
   : 'bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20'
-const headerBg = isWrong
-  ? 'bg-red-50 dark:bg-red-500/10'
-  : 'bg-emerald-50 dark:bg-emerald-500/10'
+const headerBg = isWrong ? 'bg-red-50 dark:bg-red-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'
 const headerBorder = isWrong
   ? 'border-red-100 dark:border-red-500/20'
   : 'border-emerald-100 dark:border-emerald-500/20'
 const headerText = isWrong
   ? 'text-red-600 dark:text-red-400'
   : 'text-emerald-600 dark:text-emerald-400'
-const hiddenBg = isWrong
-  ? 'bg-red-50 dark:bg-red-500/10'
-  : 'bg-emerald-50 dark:bg-emerald-500/10'
-const hiddenColor = isWrong ? 'text-red-500 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400'
+const hiddenBg = isWrong ? 'bg-red-50 dark:bg-red-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'
+const hiddenColor = isWrong
+  ? 'text-red-500 dark:text-red-400'
+  : 'text-emerald-500 dark:text-emerald-400'
 
 let suppressInput = false
 
@@ -169,7 +167,7 @@ function onScreenshotCapture(dataUrl: string) {
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     class="answer-panel flex-1 flex flex-col overflow-hidden rounded-lg border group"
     :class="panelBg"
@@ -188,8 +186,17 @@ function onScreenshotCapture(dataUrl: string) {
           title="截屏"
           @click="screenshotOpen = true"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
           </svg>
         </button>
         <button
@@ -197,8 +204,18 @@ function onScreenshotCapture(dataUrl: string) {
           title="拍照"
           @click="camOpen = true"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+            />
+            <circle cx="12" cy="13" r="4" />
           </svg>
         </button>
         <button
@@ -206,8 +223,17 @@ function onScreenshotCapture(dataUrl: string) {
           title="导入图片"
           @click="openFilePicker"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
           </svg>
         </button>
         <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileChange" />
@@ -238,11 +264,7 @@ function onScreenshotCapture(dataUrl: string) {
     </div>
   </div>
 
-  <CameraCapture
-    v-if="camOpen"
-    @capture="onCameraCapture"
-    @close="camOpen = false"
-  />
+  <CameraCapture v-if="camOpen" @capture="onCameraCapture" @close="camOpen = false" />
 
   <ScreenshotPicker
     v-if="screenshotOpen"

@@ -3,7 +3,7 @@
 // 通过 emit 发送, 不在此存储或操作业务数据。
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 
-const props = defineProps<{
+defineProps<{
   imageSrc: string
 }>()
 
@@ -80,8 +80,14 @@ function clampCrop() {
   if (r.x + r.w > img.x + img.w) r.x = img.x + img.w - r.w
   if (r.y + r.h > img.y + img.h) r.y = img.y + img.h - r.h
   // Re-clamp after coordinate adjustments above could have invalidated size
-  if (r.x < img.x) { r.w -= (img.x - r.x); r.x = img.x }
-  if (r.y < img.y) { r.h -= (img.y - r.y); r.y = img.y }
+  if (r.x < img.x) {
+    r.w -= img.x - r.x
+    r.x = img.x
+  }
+  if (r.y < img.y) {
+    r.h -= img.y - r.y
+    r.y = img.y
+  }
   if (r.w < MIN_SIZE) r.w = MIN_SIZE
   if (r.h < MIN_SIZE) r.h = MIN_SIZE
 }
@@ -180,10 +186,10 @@ function doCrop() {
   const d = imgDisplay.value
   const c = cropRect.value
 
-  const sx = (c.x - d.x) / d.w * img.naturalWidth
-  const sy = (c.y - d.y) / d.h * img.naturalHeight
-  const sw = c.w / d.w * img.naturalWidth
-  const sh = c.h / d.h * img.naturalHeight
+  const sx = ((c.x - d.x) / d.w) * img.naturalWidth
+  const sy = ((c.y - d.y) / d.h) * img.naturalHeight
+  const sw = (c.w / d.w) * img.naturalWidth
+  const sh = (c.h / d.h) * img.naturalHeight
 
   canvas.width = Math.round(sw)
   canvas.height = Math.round(sh)
@@ -209,7 +215,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     ref="containerRef"
     class="fixed inset-0 z-[60] bg-black/80 select-none"
@@ -250,14 +256,25 @@ onUnmounted(() => {
         }"
       >
         <!-- Corner handles -->
-        <div class="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize" />
-        <div class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize" />
-        <div class="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize" />
-        <div class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize" />
+        <div
+          class="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize"
+        />
+        <div
+          class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize"
+        />
+        <div
+          class="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize"
+        />
+        <div
+          class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize"
+        />
 
         <!-- Size label -->
-        <span class="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] text-white/70 whitespace-nowrap font-mono">
-          {{ Math.round(cropRect.w / imgDisplay.w * (imgRef?.naturalWidth ?? 1)) }} × {{ Math.round(cropRect.h / imgDisplay.h * (imgRef?.naturalHeight ?? 1)) }}
+        <span
+          class="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] text-white/70 whitespace-nowrap font-mono"
+        >
+          {{ Math.round((cropRect.w / imgDisplay.w) * (imgRef?.naturalWidth ?? 1)) }} ×
+          {{ Math.round((cropRect.h / imgDisplay.h) * (imgRef?.naturalHeight ?? 1)) }}
         </span>
       </div>
     </div>

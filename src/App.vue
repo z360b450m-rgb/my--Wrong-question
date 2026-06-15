@@ -45,7 +45,6 @@ const {
   openDeleteModal,
   closeDeleteModal,
   // batch
-  isSelected,
   toggleSelect,
   selectRange,
   selectAll,
@@ -56,7 +55,15 @@ const {
   notebookEntries,
 } = useEntries()
 
-const { notebooks, activeId: activeNotebookId, activeNotebook, selectNotebook, loadNotebooks, restoreLastNotebook, clearLastNotebook } = useNotebooks()
+const {
+  notebooks,
+  activeId: activeNotebookId,
+  activeNotebook,
+  selectNotebook,
+  loadNotebooks,
+  restoreLastNotebook,
+  clearLastNotebook,
+} = useNotebooks()
 const showNotebookMenu = ref(true)
 
 const {
@@ -99,7 +106,7 @@ const {
   loadLogs,
 } = useReview(notebookEntries, showToast)
 
-const { settings } = useReviewSettings()
+useReviewSettings()
 
 const {
   drawingEnabled,
@@ -121,7 +128,7 @@ const {
   setStoredDrawing,
 } = useDrawing()
 
-const { exportJSON, importJSON } = useBackup(
+const { exportData, importData } = useBackup(
   () => notebookEntries.value,
   () => activeNotebookId.value ?? '',
   loadEntries,
@@ -143,13 +150,6 @@ const pendingSubject = ref<string>('')
 const pendingForceReview = ref(false)
 
 async function handleEnterNotebook(id: string) {
-  selectNotebook(id)
-  showNotebookMenu.value = false
-  await loadEntries()
-  await loadLogs()
-}
-
-async function handleCreatedNotebook(id: string) {
   selectNotebook(id)
   showNotebookMenu.value = false
   await loadEntries()
@@ -181,7 +181,7 @@ onMounted(async () => {
 
   // Restore last notebook — only show menu on first visit
   const lastId = restoreLastNotebook()
-  if (lastId && notebooks.value.some(n => n.id === lastId)) {
+  if (lastId && notebooks.value.some((n) => n.id === lastId)) {
     selectNotebook(lastId)
     showNotebookMenu.value = false
     await loadEntries()
@@ -204,7 +204,9 @@ provide('resizeCanvas', resizeCanvas)
 
 useKeyboard({
   onCreate: () => handleCreate(),
-  onSave: () => { if (activeId.value) handleSave() },
+  onSave: () => {
+    if (activeId.value) handleSave()
+  },
   onToggleReveal: () => {
     if (mode.value === 'review') {
       if (!answered.value) revealAnswer()
@@ -226,7 +228,7 @@ useKeyboard({
 
 function navigate(dir: number) {
   if (!activeId.value) return
-  const ids = filteredEntries.value.map(e => e.id)
+  const ids = filteredEntries.value.map((e) => e.id)
   const idx = ids.indexOf(activeId.value)
   const newIdx = idx + dir
   if (newIdx >= 0 && newIdx < ids.length) {
@@ -251,10 +253,7 @@ function checkDirtyThen(action: () => void, nextAction: 'select' | 'create' | 'r
 
 function handleCreate(subject?: string) {
   pendingSubject.value = subject || ''
-  checkDirtyThen(
-    () => createEntry(subject),
-    'create',
-  )
+  checkDirtyThen(() => createEntry(subject), 'create')
 }
 
 function doCreate() {
@@ -326,16 +325,15 @@ function handleStartReview(force = false) {
     return
   }
   pendingForceReview.value = force
-  checkDirtyThen(
-    () => { startReview(force) },
-    'review',
-  )
+  checkDirtyThen(() => {
+    startReview(force)
+  }, 'review')
 }
 
 function handleMountCanvas(el: HTMLElement, entryId: string) {
   mountCanvas(el)
   // Pre-populate store from persisted drawing data
-  const entry = entries.value.find(e => e.id === entryId)
+  const entry = entries.value.find((e) => e.id === entryId)
   if (entry?.drawing) {
     setStoredDrawing(entryId, entry.drawing)
   }
@@ -344,7 +342,7 @@ function handleMountCanvas(el: HTMLElement, entryId: string) {
 
 function syncDrawingToEntry() {
   if (!activeId.value) return
-  const entry = entries.value.find(e => e.id === activeId.value)
+  const entry = entries.value.find((e) => e.id === activeId.value)
   if (!entry) return
   const dataUrl = captureDrawing()
   if (dataUrl) {
@@ -405,21 +403,21 @@ function proceedAfterSave() {
 }
 
 // Navigation state (edit mode only)
-const filteredIds = computed(() => filteredEntries.value.map(e => e.id))
-const navIdx = computed(() => activeId.value ? filteredIds.value.indexOf(activeId.value) : -1)
+const filteredIds = computed(() => filteredEntries.value.map((e) => e.id))
+const navIdx = computed(() => (activeId.value ? filteredIds.value.indexOf(activeId.value) : -1))
 const canGoPrev = computed(() => navIdx.value > 0)
 const canGoNext = computed(() => navIdx.value < filteredIds.value.length - 1 && navIdx.value >= 0)
 
 loadEntries()
 loadLogs()
 
-watch(activeId, (newId) => {
+watch(activeId, (_newId) => {
   // loadDrawing is called from handleMountCanvas after the canvas is ready
 })
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <NotebookMenu
     v-if="showNotebookMenu"
     @enter="handleEnterNotebook"
@@ -514,9 +512,9 @@ watch(activeId, (newId) => {
     @cancel-batch-delete="cancelBatchDelete"
     @batch-tag="handleBatchTag"
     @batch-export="handleBatchExport"
-    @export-json="exportJSON"
+    @export-json="exportData"
     @export-pdf="handleExportPDF"
-    @import-json="importJSON"
+    @import-json="importData"
     @toggle-stats="statsOpen = !statsOpen"
     @toggle-settings="settingsOpen = !settingsOpen"
     @toggle-dark="toggleDark"

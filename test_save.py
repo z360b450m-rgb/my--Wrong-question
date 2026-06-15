@@ -7,24 +7,27 @@ with sync_playwright() as p:
     page.wait_for_load_state('networkidle')
     page.wait_for_timeout(1000)
 
-    # Open settings, switch to custom
-    page.locator('button[title="设置"]').click()
-    page.wait_for_timeout(300)
-    page.locator('button:has-text("自定义间隔")').click()
+    # Open settings
+    page.locator('button:has-text("设置")').click()
+    page.wait_for_timeout(500)
+
+    # Expand review section
+    page.locator('button:has-text("复习设置")').click()
     page.wait_for_timeout(300)
 
-    # Change firstReviewDays from 3 to 10 (draft only)
+    # Change firstReviewDays from 1 to 10 (draft only)
     inputs = page.locator('input[type="number"]')
     first_input = inputs.nth(0)
     first_input.fill('')
     first_input.type('10')
     page.wait_for_timeout(300)
 
-    # DON'T save - close via backdrop instead
+    # DON'T save - close via clicking outside (backdrop)
+    # Settings panel uses a fixed overlay with bg-black/15
     page.locator('.fixed.inset-0.z-40').first.click()
     page.wait_for_timeout(500)
 
-    # Create entry while settings panel is closed (should still use old 3-day setting)
+    # Create entry while settings panel is closed (should still use old 1-day setting)
     page.keyboard.press('Control+n')
     page.wait_for_timeout(500)
     editors = page.locator('[contenteditable="true"]')
@@ -34,20 +37,20 @@ with sync_playwright() as p:
     page.keyboard.press('Control+s')
     page.wait_for_timeout(1000)
 
-    # Check: should still be 3天后 since we didn't save
+    # Check: should still be 1天后 since we didn't save
     html = page.content()
-    if '3天后' in html:
-        print("PASS: Without save, entry still shows '3天后' (old setting)")
+    if '1天后' in html:
+        print("PASS: Without save, entry still shows '1天后' (old setting)")
     else:
-        print(f"FAIL: Expected '3天后' but not found")
+        print("FAIL: Expected '1天后' but not found")
 
     # Now open settings again, change and SAVE
-    page.locator('button[title="设置"]').click()
-    page.wait_for_timeout(300)
-    page.locator('button:has-text("自定义间隔")').click()
+    page.locator('button:has-text("设置")').click()
+    page.wait_for_timeout(500)
+    page.locator('button:has-text("复习设置")').click()
     page.wait_for_timeout(300)
 
-    # Draft should reset to 3 (the stored value), change to 10
+    # Draft should reset, change to 10
     inputs = page.locator('input[type="number"]')
     first_input = inputs.nth(0)
     first_input.fill('')
@@ -56,14 +59,14 @@ with sync_playwright() as p:
 
     # Click save
     page.locator('button:has-text("保存复习设置")').click()
-    page.wait_for_timeout(2000)  # Wait for recalc + debounce
+    page.wait_for_timeout(2000)
 
     # Check entry again
     html2 = page.content()
     if '10天后' in html2:
         print("PASS: After save, entry updated to '10天后'!")
-    elif '3天后' in html2:
-        print("FAIL: Still shows '3天后' - save didn't trigger recalc")
+    elif '1天后' in html2:
+        print("FAIL: Still shows '1天后' - save didn't trigger recalc")
     else:
         print("Checking...")
 

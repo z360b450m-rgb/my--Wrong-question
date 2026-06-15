@@ -23,7 +23,14 @@ function isToday(ts: number): boolean {
   )
 }
 
-export function intervalForLevel(passes: number, entry: NoteEntry, firstReviewDays: number, masteredDays: number, growthFactor: number, maxInterval: number): number {
+export function intervalForLevel(
+  passes: number,
+  entry: NoteEntry,
+  firstReviewDays: number,
+  masteredDays: number,
+  growthFactor: number,
+  maxInterval: number,
+): number {
   if (passes === 0) return firstReviewDays
   if (passes === 1) return masteredDays
   if (passes === 2) return Math.round(masteredDays * growthFactor)
@@ -53,14 +60,28 @@ function applyCustom(
       entry.masteryLevel = 0
       entry.interval = unmasteredDays
     } else {
-      entry.interval = intervalForLevel(passes, entry, firstReviewDays, masteredDays, growthFactor, maxInterval)
+      entry.interval = intervalForLevel(
+        passes,
+        entry,
+        firstReviewDays,
+        masteredDays,
+        growthFactor,
+        maxInterval,
+      )
     }
     entry.easeFactor = 1.8
   } else {
     entry.consecutivePasses = passes + 1
     const cp = entry.consecutivePasses
     entry.masteryLevel = Math.min(cp, 4)
-    entry.interval = intervalForLevel(cp, entry, firstReviewDays, masteredDays, growthFactor, maxInterval)
+    entry.interval = intervalForLevel(
+      cp,
+      entry,
+      firstReviewDays,
+      masteredDays,
+      growthFactor,
+      maxInterval,
+    )
     entry.easeFactor = 2.5
   }
 
@@ -123,19 +144,30 @@ export function useReview(
   const { settings } = useReviewSettings()
 
   // When settings change, recalculate nextReviewDate for all entries
-  watch(settings, () => {
-    const s = settings.value
-    entries.value.forEach((entry) => {
-      if (!entry.lastReviewDate) return
-      const passes = entry.consecutivePasses ?? 0
-      const interval =
-        passes === 0
-          ? s.unmasteredDays
-          : intervalForLevel(passes, entry, s.firstReviewDays, s.masteredDays, s.growthFactor, s.maxInterval)
-      entry.interval = interval
-      entry.nextReviewDate = entry.lastReviewDate + interval * 86400000
-    })
-  }, { deep: true })
+  watch(
+    settings,
+    () => {
+      const s = settings.value
+      entries.value.forEach((entry) => {
+        if (!entry.lastReviewDate) return
+        const passes = entry.consecutivePasses ?? 0
+        const interval =
+          passes === 0
+            ? s.unmasteredDays
+            : intervalForLevel(
+                passes,
+                entry,
+                s.firstReviewDays,
+                s.masteredDays,
+                s.growthFactor,
+                s.maxInterval,
+              )
+        entry.interval = interval
+        entry.nextReviewDate = entry.lastReviewDate + interval * 86400000
+      })
+    },
+    { deep: true },
+  )
 
   const sessionDone = ref(false)
   const sessionRecords = ref<SessionRecord[]>([])
@@ -185,8 +217,8 @@ export function useReview(
 
   const dueCount = computed(() => dueEntries.value.length)
 
-  const reviewedToday = computed(() =>
-    entries.value.filter((e) => e.lastReviewDate && isToday(e.lastReviewDate)).length,
+  const reviewedToday = computed(
+    () => entries.value.filter((e) => e.lastReviewDate && isToday(e.lastReviewDate)).length,
   )
 
   const isReviewing = computed(
@@ -240,7 +272,15 @@ export function useReview(
       entry.wrongAnswer = (entry.wrongAnswer || '') + separator + note.trim()
     }
 
-    applyCustom(entry, rating as string, settings.value.firstReviewDays, settings.value.unmasteredDays, settings.value.masteredDays, settings.value.growthFactor, settings.value.maxInterval)
+    applyCustom(
+      entry,
+      rating as string,
+      settings.value.firstReviewDays,
+      settings.value.unmasteredDays,
+      settings.value.masteredDays,
+      settings.value.growthFactor,
+      settings.value.maxInterval,
+    )
     try {
       await db.put(JSON.parse(JSON.stringify(entry)))
       await addLog(entry.id, rating)

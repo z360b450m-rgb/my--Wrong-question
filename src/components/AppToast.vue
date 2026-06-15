@@ -24,7 +24,7 @@ watch(
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <Transition name="toast">
     <div
       v-if="visible"
@@ -36,10 +36,20 @@ watch(
 </template>
 
 <style scoped>
-.toast-enter-active { animation: toast-in 0.3s ease; }
-.toast-leave-active { animation: toast-in 0.3s ease reverse; }
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+.toast-leave-active {
+  animation: toast-in 0.3s ease reverse;
+}
 @keyframes toast-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 </style>

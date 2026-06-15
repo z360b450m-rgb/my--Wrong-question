@@ -30,7 +30,7 @@
 //   - electron/main.cjs (主进程 IPC 处理程序)
 //   - src/services/db.ts (渲染进程数据库访问层, 通过 window.electronAPI 调用)
 // ===================================================================
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
@@ -53,10 +53,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportAll: () => ipcRenderer.invoke('storage:exportAll'),
   importAll: (entries) => ipcRenderer.invoke('storage:importAll', entries),
 
+  exportArchive: () => ipcRenderer.invoke('storage:exportArchive'),
+  importArchive: () => ipcRenderer.invoke('storage:importArchive'),
+
   // Review log API
   getAllReviewLogs: () => ipcRenderer.invoke('storage:getAllReviewLogs'),
   addReviewLog: (log) => ipcRenderer.invoke('storage:addReviewLog', log),
-  deleteReviewLogsByEntry: (entryId) => ipcRenderer.invoke('storage:deleteReviewLogsByEntry', entryId),
+  deleteReviewLogsByEntry: (entryId) =>
+    ipcRenderer.invoke('storage:deleteReviewLogsByEntry', entryId),
 
   // Desktop capture
   getDesktopSources: () => ipcRenderer.invoke('desktop:getSources'),
@@ -69,4 +73,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAllNotebooks: () => ipcRenderer.invoke('storage:getAllNotebooks'),
   putNotebook: (notebook) => ipcRenderer.invoke('storage:putNotebook', notebook),
   deleteNotebook: (id) => ipcRenderer.invoke('storage:deleteNotebook', id),
-});
+})

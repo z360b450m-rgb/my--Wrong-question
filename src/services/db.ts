@@ -64,7 +64,9 @@ const fileDb = {
     await window.electronAPI!.putSnapshot({ entryId, data, savedAt: Date.now() })
   },
 
-  async getSnapshot(entryId: string): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
+  async getSnapshot(
+    entryId: string,
+  ): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
     const snap = await window.electronAPI!.getSnapshot(entryId)
     return snap ?? undefined
   },
@@ -172,10 +174,14 @@ const idbDb = {
   },
 
   putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
-    return tx('readwrite', (s) => s.put({ entryId, data, savedAt: Date.now() }), SNAP_STORE).then(() => undefined)
+    return tx('readwrite', (s) => s.put({ entryId, data, savedAt: Date.now() }), SNAP_STORE).then(
+      () => undefined,
+    )
   },
 
-  getSnapshot(entryId: string): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
+  getSnapshot(
+    entryId: string,
+  ): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
     return tx('readonly', (s) => s.get(entryId), SNAP_STORE)
   },
 
@@ -200,10 +206,14 @@ const idbDb = {
   },
 
   deleteReviewLogsByEntry(entryId: string): Promise<void> {
-    return tx('readwrite', (s) => {
-      const idx = s.index('entryId')
-      return idx.getAllKeys(entryId)
-    }, REVIEW_LOG_STORE).then((keys) => {
+    return tx(
+      'readwrite',
+      (s) => {
+        const idx = s.index('entryId')
+        return idx.getAllKeys(entryId)
+      },
+      REVIEW_LOG_STORE,
+    ).then((keys) => {
       const deletePromises = (keys as string[]).map((key) =>
         tx('readwrite', (s2) => s2.delete(key), REVIEW_LOG_STORE),
       )
@@ -237,12 +247,18 @@ export async function migrateFromIndexedDB(): Promise<number> {
   try {
     const alreadyMigrated = await window.electronAPI!.isIndexedDBMigrated()
     if (alreadyMigrated) return 0
-  } catch { /* proceed */ }
+  } catch {
+    /* proceed */
+  }
 
   const existing = await fileDb.getAll()
   if (existing.length > 0) {
     // Already has file data — mark migrated so future starts skip IDB
-    try { await window.electronAPI!.markIndexedDBMigrated() } catch { /* ignore */ }
+    try {
+      await window.electronAPI!.markIndexedDBMigrated()
+    } catch {
+      /* ignore */
+    }
     return 0
   }
 
@@ -250,13 +266,21 @@ export async function migrateFromIndexedDB(): Promise<number> {
     const idbEntries = await idbDb.getAll()
     if (idbEntries.length === 0) {
       // No IDB data either — mark migrated so future starts skip IDB
-      try { await window.electronAPI!.markIndexedDBMigrated() } catch { /* ignore */ }
+      try {
+        await window.electronAPI!.markIndexedDBMigrated()
+      } catch {
+        /* ignore */
+      }
       return 0
     }
     for (const entry of idbEntries) {
       await fileDb.put(entry)
     }
-    try { await window.electronAPI!.markIndexedDBMigrated() } catch { /* ignore */ }
+    try {
+      await window.electronAPI!.markIndexedDBMigrated()
+    } catch {
+      /* ignore */
+    }
     return idbEntries.length
   } catch {
     return 0

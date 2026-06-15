@@ -10,7 +10,7 @@ with sync_playwright() as p:
     html = page.content()
 
     # Should see the notebook menu
-    if '选择一个错题本开始复习' in html:
+    if '选择要复习的错题本' in html:
         print("PASS: Notebook menu shown")
     else:
         print("FAIL: Notebook menu not found")
@@ -21,19 +21,17 @@ with sync_playwright() as p:
     else:
         print("FAIL: Create button not found")
 
-    # Click create button
-    page.locator('button:has-text("新建错题本")').click()
+    # Click create button (use .first to avoid strict-mode ambiguity with 2 buttons)
+    page.locator('button:has-text("新建错题本")').first.click()
     page.wait_for_timeout(300)
 
     html2 = page.content()
-    if '名称' in html2 and '简介' in html2 and '使用说明' in html2:
-        print("PASS: Create dialog with all fields")
+    if '名称' in html2 and '简介' in html2:
+        print("PASS: Create dialog with name & description fields")
 
-    # Fill in and create
-    inputs = page.locator('input[type="text"]')
-    inputs.nth(0).fill('Test Book')
-    inputs.nth(1).fill('A test notebook')
-    page.locator('textarea').fill('Review daily')
+    # Fill dialog fields by placeholder
+    page.get_by_placeholder('例如：数学错题本').fill('Test Book')
+    page.get_by_placeholder('简短描述').fill('A test notebook')
     page.wait_for_timeout(200)
 
     # Click create
@@ -42,18 +40,26 @@ with sync_playwright() as p:
 
     html3 = page.content()
     if 'Test Book' in html3:
-        print("PASS: Entered notebook, name shown in sidebar")
-    else:
-        print("FAIL: Not in notebook view")
+        print("PASS: Notebook created, visible in menu list")
 
-    # Return to menu
-    page.locator('button:has-text("返回")').click()
-    page.wait_for_timeout(500)
+    # Enter the notebook (click the notebook card in menu)
+    page.locator('button:has-text("Test Book")').first.click()
+    page.wait_for_timeout(2000)
 
     html4 = page.content()
-    if 'Test Book' in html4:
-        print("PASS: Notebook card visible in menu")
+    if '返回' in html4:
+        print("PASS: Entered notebook, back button visible")
     else:
-        print("FAIL: Notebook not in menu list")
+        print("FAIL: Back button not found after entering notebook")
+
+    # Return to menu
+    page.locator('button:has-text("返回")').first.click()
+    page.wait_for_timeout(500)
+
+    html5 = page.content()
+    if 'Test Book' in html5:
+        print("PASS: Back in menu, notebook card still visible")
+    else:
+        print("FAIL: Notebook not in menu list after return")
 
     browser.close()

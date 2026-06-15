@@ -1,11 +1,5 @@
 import type { NoteEntry } from '@/types'
 
-function timestamp(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`
-}
-
 // ===================================================================
 // @AI-GUIDE: PDF 导出工具层
 // 纯格式化 + I/O 逻辑。按学科分组生成 HTML, 通过 window.print()
@@ -64,7 +58,7 @@ ${items
   .map(
     (e) => `
 <div class="card">
-  <div class="card-title">${e.source || ''} ${(e.tags && e.tags.length > 0) ? '· ' + e.tags.join(', ') : ''}</div>
+  <div class="card-title">${e.source || ''} ${e.tags && e.tags.length > 0 ? '· ' + e.tags.join(', ') : ''}</div>
   <div class="question">${e.question || '(无题目)'}</div>
   ${e.wrongAnswer ? `<div class="answer-label">我的答案</div><div class="wrong">${e.wrongAnswer}</div>` : ''}
   ${e.wrongAnswer && e.correctAnswer ? '<hr>' : ''}

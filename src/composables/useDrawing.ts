@@ -75,7 +75,10 @@ export function useDrawing(): DrawingState {
 
   function restoreSnapshot(dataUrl: string): Promise<void> {
     return new Promise((resolve) => {
-      if (!canvas || !ctx) { resolve(); return }
+      if (!canvas || !ctx) {
+        resolve()
+        return
+      }
       const img = new Image()
       img.onload = () => {
         ctx!.save()
@@ -187,9 +190,16 @@ export function useDrawing(): DrawingState {
     if (ctx) ctx.closePath()
   }
 
-  function onMouseDown(e: MouseEvent) { e.preventDefault(); onStart(e) }
-  function onMouseMove(e: MouseEvent) { onMove(e) }
-  function onMouseUp() { onEnd() }
+  function onMouseDown(e: MouseEvent) {
+    e.preventDefault()
+    onStart(e)
+  }
+  function onMouseMove(e: MouseEvent) {
+    onMove(e)
+  }
+  function onMouseUp() {
+    onEnd()
+  }
   function onTouchStart(e: TouchEvent) {
     if (e.touches.length === 1) {
       e.preventDefault()
@@ -202,7 +212,9 @@ export function useDrawing(): DrawingState {
       onMove(e.touches[0])
     }
   }
-  function onTouchEnd() { onEnd() }
+  function onTouchEnd() {
+    onEnd()
+  }
 
   function mountCanvas(container: HTMLElement) {
     // Save current canvas content before teardown
@@ -293,7 +305,9 @@ export function useDrawing(): DrawingState {
     }
   }
 
-  function resizeCanvas() { resize() }
+  function resizeCanvas() {
+    resize()
+  }
 
   function clearCanvas() {
     if (!canvas || !ctx) return
@@ -325,7 +339,9 @@ export function useDrawing(): DrawingState {
     }
   }
 
-  function setTool(t: DrawTool) { activeTool.value = t }
+  function setTool(t: DrawTool) {
+    activeTool.value = t
+  }
   function setColor(c: string) {
     penColor.value = c
     activeTool.value = 'pen'

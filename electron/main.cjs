@@ -30,93 +30,113 @@
 //   - src/types/index.ts (数据结构定义)
 //   - src/services/db.ts (渲染进程数据库访问层)
 // ===================================================================
-const { app, BrowserWindow, Menu, ipcMain, dialog, desktopCapturer } = require('electron');
-const path = require('path');
-const fs = require('fs');
+const { app, BrowserWindow, Menu, ipcMain, dialog, desktopCapturer } = require('electron')
+const path = require('path')
+const fs = require('fs')
+const log = require('electron-log')
+const AdmZip = require('adm-zip')
 
-let mainWindow;
-let dataDir = null;
+log.transports.file.level = 'info'
+log.transports.console.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}'
+
+process.on('uncaughtException', (error) => {
+  log.error('发生未捕获的异常:', error)
+})
+
+let mainWindow
+let dataDir = null
 
 function getDefaultDataDir() {
-  return path.join(app.getPath('documents'), '错题本');
+  return path.join(app.getPath('documents'), '错题本')
 }
 
 function getDataDir() {
   if (!dataDir) {
-    const configPath = path.join(app.getPath('userData'), 'config.json');
+    const configPath = path.join(app.getPath('userData'), 'config.json')
     try {
       if (fs.existsSync(configPath)) {
-        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
         if (cfg.dataDir && fs.existsSync(cfg.dataDir)) {
-          dataDir = cfg.dataDir;
-          return dataDir;
+          dataDir = cfg.dataDir
+          return dataDir
         }
       }
-    } catch { /* fall through to default */ }
-    dataDir = getDefaultDataDir();
+    } catch (err) {
+      log.warn('读取 config.json 失败，使用默认数据目录', err)
+    }
+    dataDir = getDefaultDataDir()
   }
-  return dataDir;
+  return dataDir
 }
 
 function readConfig() {
-  const configPath = path.join(app.getPath('userData'), 'config.json');
+  const configPath = path.join(app.getPath('userData'), 'config.json')
   try {
     if (fs.existsSync(configPath)) {
-      return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      return JSON.parse(fs.readFileSync(configPath, 'utf-8'))
     }
-  } catch { /* ignore */ }
-  return {};
+  } catch (err) {
+    log.warn('读取应用配置失败', err)
+  }
+  return {}
 }
 
 function saveConfig() {
-  const configPath = path.join(app.getPath('userData'), 'config.json');
-  const dir = path.dirname(configPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const cfg = readConfig();
-  cfg.dataDir = dataDir;
-  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8');
+  const configPath = path.join(app.getPath('userData'), 'config.json')
+  const dir = path.dirname(configPath)
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  const cfg = readConfig()
+  cfg.dataDir = dataDir
+  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8')
 }
 
 function isIndexedDBMigrated() {
-  return readConfig().indexedDBMigrated === true;
+  return readConfig().indexedDBMigrated === true
 }
 
 function markIndexedDBMigrated() {
-  const configPath = path.join(app.getPath('userData'), 'config.json');
-  const cfg = readConfig();
-  cfg.indexedDBMigrated = true;
-  const dir = path.dirname(configPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8');
+  const configPath = path.join(app.getPath('userData'), 'config.json')
+  const cfg = readConfig()
+  cfg.indexedDBMigrated = true
+  const dir = path.dirname(configPath)
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8')
 }
 
 function getDataFilePath() {
-  return path.join(getDataDir(), 'cuotiben-data.json');
+  return path.join(getDataDir(), 'cuotiben-data.json')
 }
 
 function readData() {
-  const filePath = getDataFilePath();
+  const filePath = getDataFilePath()
   try {
-    if (!fs.existsSync(filePath)) return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] };
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw);
-    if (!data.notebooks) data.notebooks = [];
-    if (!data.entries) data.entries = [];
-    if (!data.snapshots) data.snapshots = [];
-    if (!data.reviewLogs) data.reviewLogs = [];
-    return data;
-  } catch {
-    return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] };
+    if (!fs.existsSync(filePath))
+      return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] }
+    const raw = fs.readFileSync(filePath, 'utf-8')
+    const data = JSON.parse(raw)
+    if (!data.notebooks) data.notebooks = []
+    if (!data.entries) data.entries = []
+    if (!data.snapshots) data.snapshots = []
+    if (!data.reviewLogs) data.reviewLogs = []
+    return data
+  } catch (err) {
+    log.error('读取主数据文件失败，返回空数据集', err)
+    return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] }
   }
 }
 
 function writeData(data) {
-  const dir = getDataDir();
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const filePath = getDataFilePath();
-  const tmpPath = filePath + '.tmp';
-  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
-  fs.renameSync(tmpPath, filePath);
+  const dir = getDataDir()
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  const filePath = getDataFilePath()
+  const tmpPath = filePath + '.tmp'
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8')
+    fs.renameSync(tmpPath, filePath)
+    log.info(`数据已写入: ${filePath}`)
+  } catch (err) {
+    log.error('写入数据文件失败', err)
+  }
 }
 
 // Register IPC handlers
@@ -127,171 +147,386 @@ ipcMain.handle('desktop:getSources', async () => {
     types: ['screen', 'window'],
     thumbnailSize: { width: 320, height: 240 },
     fetchWindowIcons: true,
-  });
+  })
   return sources.map((s) => ({
     id: s.id,
     name: s.name,
     thumbnail: s.thumbnail.toDataURL(),
     appIcon: s.appIcon ? s.appIcon.toDataURL() : null,
-  }));
-});
+  }))
+})
 
 // ── Migration ─────────────────────────────────────────────────────
 
 ipcMain.handle('storage:isIndexedDBMigrated', () => {
-  return isIndexedDBMigrated();
-});
+  return isIndexedDBMigrated()
+})
 
 ipcMain.handle('storage:markIndexedDBMigrated', () => {
-  markIndexedDBMigrated();
-});
+  markIndexedDBMigrated()
+})
 
 ipcMain.handle('storage:getAll', () => {
-  const data = readData();
-  return data.entries;
-});
+  const data = readData()
+  return data.entries
+})
 
 ipcMain.handle('storage:get', (_e, id) => {
-  const data = readData();
-  return data.entries.find((e) => e.id === id) ?? null;
-});
+  const data = readData()
+  return data.entries.find((e) => e.id === id) ?? null
+})
 
 ipcMain.handle('storage:put', (_e, entry) => {
-  const data = readData();
-  const idx = data.entries.findIndex((e) => e.id === entry.id);
+  const data = readData()
+  const idx = data.entries.findIndex((e) => e.id === entry.id)
   if (idx >= 0) {
-    data.entries[idx] = entry;
+    data.entries[idx] = entry
   } else {
-    data.entries.push(entry);
+    data.entries.push(entry)
   }
-  writeData(data);
-});
+  writeData(data)
+})
 
 ipcMain.handle('storage:delete', (_e, id) => {
-  const data = readData();
-  data.entries = data.entries.filter((e) => e.id !== id);
-  writeData(data);
-});
+  const data = readData()
+  data.entries = data.entries.filter((e) => e.id !== id)
+  writeData(data)
+})
 
 ipcMain.handle('storage:putSnapshot', (_e, snapshot) => {
-  const data = readData();
-  const idx = data.snapshots.findIndex((s) => s.entryId === snapshot.entryId);
+  const data = readData()
+  const idx = data.snapshots.findIndex((s) => s.entryId === snapshot.entryId)
   if (idx >= 0) {
-    data.snapshots[idx] = snapshot;
+    data.snapshots[idx] = snapshot
   } else {
-    data.snapshots.push(snapshot);
+    data.snapshots.push(snapshot)
   }
-  writeData(data);
-});
+  writeData(data)
+})
 
 ipcMain.handle('storage:getSnapshot', (_e, entryId) => {
-  const data = readData();
-  return data.snapshots.find((s) => s.entryId === entryId) ?? null;
-});
+  const data = readData()
+  return data.snapshots.find((s) => s.entryId === entryId) ?? null
+})
 
 ipcMain.handle('storage:getAllSnapshots', () => {
-  const data = readData();
-  return data.snapshots;
-});
+  const data = readData()
+  return data.snapshots
+})
 
 ipcMain.handle('storage:deleteSnapshot', (_e, entryId) => {
-  const data = readData();
-  data.snapshots = data.snapshots.filter((s) => s.entryId !== entryId);
-  writeData(data);
-});
+  const data = readData()
+  data.snapshots = data.snapshots.filter((s) => s.entryId !== entryId)
+  writeData(data)
+})
 
 ipcMain.handle('storage:deleteAllSnapshots', () => {
-  const data = readData();
-  data.snapshots = [];
-  writeData(data);
-});
+  const data = readData()
+  data.snapshots = []
+  writeData(data)
+})
 
 // ── Review log handlers ──────────────────────────────────────────
 
 ipcMain.handle('storage:getAllReviewLogs', () => {
-  const data = readData();
-  return data.reviewLogs || [];
-});
+  const data = readData()
+  return data.reviewLogs || []
+})
 
 ipcMain.handle('storage:addReviewLog', (_e, log) => {
-  const data = readData();
-  if (!data.reviewLogs) data.reviewLogs = [];
-  data.reviewLogs.push(log);
-  writeData(data);
-});
+  const data = readData()
+  if (!data.reviewLogs) data.reviewLogs = []
+  data.reviewLogs.push(log)
+  writeData(data)
+})
 
 ipcMain.handle('storage:deleteReviewLogsByEntry', (_e, entryId) => {
-  const data = readData();
-  data.reviewLogs = (data.reviewLogs || []).filter((l) => l.entryId !== entryId);
-  writeData(data);
-});
+  const data = readData()
+  data.reviewLogs = (data.reviewLogs || []).filter((l) => l.entryId !== entryId)
+  writeData(data)
+})
 
 // ── Notebook handlers ─────────────────────────────────────────────
 
 ipcMain.handle('storage:getAllNotebooks', () => {
-  return readData().notebooks || [];
-});
+  return readData().notebooks || []
+})
 
 ipcMain.handle('storage:putNotebook', (_e, notebook) => {
-  const data = readData();
-  if (!data.notebooks) data.notebooks = [];
-  const idx = data.notebooks.findIndex((n) => n.id === notebook.id);
+  const data = readData()
+  if (!data.notebooks) data.notebooks = []
+  const idx = data.notebooks.findIndex((n) => n.id === notebook.id)
   if (idx >= 0) {
-    data.notebooks[idx] = notebook;
+    data.notebooks[idx] = notebook
   } else {
-    data.notebooks.push(notebook);
+    data.notebooks.push(notebook)
   }
-  writeData(data);
-});
+  writeData(data)
+})
 
 ipcMain.handle('storage:deleteNotebook', (_e, id) => {
-  const data = readData();
-  data.notebooks = (data.notebooks || []).filter((n) => n.id !== id);
-  data.entries = (data.entries || []).filter((e) => e.notebookId !== id);
-  const deletedIds = new Set((data.entries || []).map((e) => e.id));
-  data.snapshots = (data.snapshots || []).filter((s) => deletedIds.has(s.entryId));
-  data.reviewLogs = (data.reviewLogs || []).filter((l) => deletedIds.has(l.entryId));
-  writeData(data);
-});
+  const data = readData()
+  data.notebooks = (data.notebooks || []).filter((n) => n.id !== id)
+  data.entries = (data.entries || []).filter((e) => e.notebookId !== id)
+  const deletedIds = new Set((data.entries || []).map((e) => e.id))
+  data.snapshots = (data.snapshots || []).filter((s) => deletedIds.has(s.entryId))
+  data.reviewLogs = (data.reviewLogs || []).filter((l) => deletedIds.has(l.entryId))
+  writeData(data)
+})
 
-ipcMain.handle('storage:getDataDir', () => getDataDir());
+ipcMain.handle('storage:getDataDir', () => getDataDir())
 
 ipcMain.handle('storage:setDataDir', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: '选择数据保存目录',
     properties: ['openDirectory'],
-  });
-  if (result.canceled || result.filePaths.length === 0) return getDataDir();
-  const newDir = result.filePaths[0];
+  })
+  if (result.canceled || result.filePaths.length === 0) return getDataDir()
+  const newDir = result.filePaths[0]
   // Migrate existing data to new directory
-  const oldData = readData();
-  const oldDir = getDataDir();
-  dataDir = newDir;
-  saveConfig();
-  writeData(oldData);
+  const oldData = readData()
+  const oldDir = getDataDir()
+  dataDir = newDir
+  saveConfig()
+  writeData(oldData)
   // Remove old data file if it exists
   try {
-    const oldFile = path.join(oldDir, 'cuotiben-data.json');
-    if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
-  } catch { /* ignore */ }
-  return newDir;
-});
+    const oldFile = path.join(oldDir, 'cuotiben-data.json')
+    if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile)
+  } catch (err) {
+    log.warn('清理旧数据文件失败', err)
+  }
+  return newDir
+})
 
 ipcMain.handle('storage:exportAll', () => {
-  return JSON.stringify(readData().entries, null, 2);
-});
+  return JSON.stringify(readData().entries, null, 2)
+})
 
 ipcMain.handle('storage:importAll', (_e, entries) => {
-  const data = readData();
-  const existingIds = new Set(data.entries.map((e) => e.id));
+  const data = readData()
+  const existingIds = new Set(data.entries.map((e) => e.id))
   for (const entry of entries) {
     if (!existingIds.has(entry.id)) {
-      data.entries.push(entry);
-      existingIds.add(entry.id);
+      data.entries.push(entry)
+      existingIds.add(entry.id)
     }
   }
-  writeData(data);
-});
+  writeData(data)
+})
+
+// ── Archive export (.ctb) ────────────────────────────────────────────
+
+const IMG_RE = /<img[^>]+src="data:image\/(png|jpeg|jpg|gif|webp);base64,([^"]+)"/gi
+
+function extractImages(html) {
+  const images = []
+  let index = 0
+
+  const replaced = html.replace(IMG_RE, (_match, ext, b64) => {
+    const mimeExt = ext === 'jpeg' ? 'jpg' : ext
+    const filename = `img_${index}_${Date.now().toString(36)}.${mimeExt}`
+    images.push({ filename, data: Buffer.from(b64, 'base64') })
+    index++
+    return _match.replace(/src="data:image\/[^"]+"/i, `src="images/${filename}"`)
+  })
+
+  return { html: replaced, images }
+}
+
+function restoreImages(html, imagesDir) {
+  return html.replace(/<img[^>]+src="images\/([^"]+)"[^>]*>/gi, (match, filename) => {
+    const imgPath = path.join(imagesDir, filename)
+    if (!fs.existsSync(imgPath)) return match
+    const buf = fs.readFileSync(imgPath)
+    const ext = path.extname(filename).slice(1).toLowerCase()
+    const mime = ext === 'jpg' ? 'jpeg' : ext
+    const b64 = buf.toString('base64')
+    return match.replace(/src="images\/[^"]+"/i, `src="data:image/${mime};base64,${b64}"`)
+  })
+}
+
+ipcMain.handle('storage:exportArchive', async () => {
+  const data = readData()
+  if (!data.entries || data.entries.length === 0) {
+    return { success: false, message: '暂无错题可导出' }
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出错题本归档',
+    defaultPath: `cuotiben_${Date.now()}.ctb`,
+    filters: [
+      { name: '错题本归档', extensions: ['ctb'] },
+      { name: 'ZIP 压缩包', extensions: ['zip'] },
+    ],
+  })
+
+  if (result.canceled || !result.filePath) {
+    return { success: false, message: '已取消导出' }
+  }
+
+  const tmpDir = path.join(getDataDir(), '.tmp_export')
+  try {
+    // Clean and recreate temp dir
+    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true })
+    fs.mkdirSync(tmpDir, { recursive: true })
+
+    const imagesDir = path.join(tmpDir, 'images')
+    fs.mkdirSync(imagesDir, { recursive: true })
+
+    // Deep-clone entries to avoid mutating in-memory data
+    const exportData = JSON.parse(
+      JSON.stringify({
+        notebooks: data.notebooks,
+        entries: data.entries,
+        reviewLogs: data.reviewLogs,
+      }),
+    )
+
+    // Extract base64 images and replace with relative paths
+    for (const entry of exportData.entries) {
+      for (const field of ['wrongAnswer', 'correctAnswer']) {
+        const html = entry[field] || ''
+        const { html: replaced, images } = extractImages(html)
+        entry[field] = replaced
+        for (const img of images) {
+          fs.writeFileSync(path.join(imagesDir, img.filename), img.data)
+        }
+      }
+    }
+
+    // Write data.json
+    const dataJsonPath = path.join(tmpDir, 'data.json')
+    fs.writeFileSync(dataJsonPath, JSON.stringify(exportData, null, 2), 'utf-8')
+
+    // Create .ctb archive
+    const zip = new AdmZip()
+    zip.addLocalFile(dataJsonPath)
+    zip.addLocalFolder(imagesDir, 'images')
+    zip.writeZip(result.filePath)
+
+    const entryCount = exportData.entries.length
+    const imageCount = fs.readdirSync(imagesDir).length
+    log.info(`导出归档: ${result.filePath} (${entryCount} 条错题, ${imageCount} 张图片)`)
+
+    return { success: true, message: `已导出 ${entryCount} 条错题`, count: entryCount }
+  } catch (err) {
+    log.error('导出归档失败', err)
+    return { success: false, message: '导出失败：无法创建归档文件' }
+  } finally {
+    try {
+      if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true })
+    } catch {
+      /* cleanup failed, ignore */
+    }
+  }
+})
+
+ipcMain.handle('storage:importArchive', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: '导入错题本归档',
+    filters: [{ name: '错题本归档', extensions: ['ctb', 'zip'] }],
+    properties: ['openFile'],
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return { success: false, message: '已取消导入' }
+  }
+
+  const filePath = result.filePaths[0]
+  const tmpDir = path.join(getDataDir(), '.tmp_import')
+
+  try {
+    // Clean and recreate temp dir
+    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true })
+    fs.mkdirSync(tmpDir, { recursive: true })
+
+    // Extract archive
+    const zip = new AdmZip(filePath)
+    zip.extractAllTo(tmpDir, true)
+
+    const dataJsonPath = path.join(tmpDir, 'data.json')
+    if (!fs.existsSync(dataJsonPath)) {
+      return { success: false, message: '导入失败：归档中缺少 data.json' }
+    }
+
+    const raw = fs.readFileSync(dataJsonPath, 'utf-8')
+    const importData = JSON.parse(raw)
+
+    if (!importData.entries || !Array.isArray(importData.entries)) {
+      return { success: false, message: '导入失败：数据格式不正确' }
+    }
+
+    // Restore base64 images from images/ folder
+    const imagesDir = path.join(tmpDir, 'images')
+    if (fs.existsSync(imagesDir)) {
+      for (const entry of importData.entries) {
+        for (const field of ['wrongAnswer', 'correctAnswer']) {
+          if (entry[field] && entry[field].includes('images/')) {
+            entry[field] = restoreImages(entry[field], imagesDir)
+          }
+        }
+      }
+    }
+
+    // Merge into current data
+    const currentData = readData()
+
+    if (!currentData.notebooks) currentData.notebooks = []
+    if (!currentData.reviewLogs) currentData.reviewLogs = []
+
+    // Merge notebooks (by id, skip duplicates)
+    const existingNbIds = new Set(currentData.notebooks.map((n) => n.id))
+    const importNb = importData.notebooks || []
+    for (const nb of importNb) {
+      if (!existingNbIds.has(nb.id)) {
+        currentData.notebooks.push(nb)
+        existingNbIds.add(nb.id)
+      }
+    }
+
+    // Merge entries (by id, skip duplicates)
+    const existingIds = new Set(currentData.entries.map((e) => e.id))
+    let importedCount = 0
+    for (const entry of importData.entries) {
+      if (!existingIds.has(entry.id)) {
+        currentData.entries.push(entry)
+        existingIds.add(entry.id)
+        importedCount++
+      }
+    }
+
+    // Merge review logs (by id, skip duplicates)
+    const existingLogIds = new Set(currentData.reviewLogs.map((l) => l.id))
+    const importLogs = importData.reviewLogs || []
+    let importedLogs = 0
+    for (const log of importLogs) {
+      if (!existingLogIds.has(log.id)) {
+        currentData.reviewLogs.push(log)
+        existingLogIds.add(log.id)
+        importedLogs++
+      }
+    }
+
+    writeData(currentData)
+    log.info(`导入归档: ${filePath} (${importedCount} 条错题, ${importedLogs} 条复习记录)`)
+
+    return {
+      success: true,
+      message: `成功导入 ${importedCount} 条错题`,
+      count: importedCount,
+    }
+  } catch (err) {
+    log.error('导入归档失败', err)
+    return { success: false, message: '导入失败：无法解析归档文件' }
+  } finally {
+    try {
+      if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true })
+    } catch {
+      /* cleanup failed, ignore */
+    }
+  }
+})
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -307,25 +542,27 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
     },
-  });
+  })
 
-  mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
+    mainWindow.show()
+  })
 
-  Menu.setApplicationMenu(null);
+  Menu.setApplicationMenu(null)
 
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+  if (process.platform !== 'darwin') app.quit()
+})
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
+  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+})

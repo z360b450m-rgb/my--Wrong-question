@@ -4,7 +4,6 @@ import { db } from '@/services/db'
 import { useReviewSettings } from '@/composables/useReviewSettings'
 import { useNotebooks } from '@/composables/useNotebooks'
 
-
 // IndexedDB can't store Vue Proxy objects (structured clone error)
 function toPlain<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
@@ -17,7 +16,7 @@ function genId(): string {
 function stripMd(s: string): string {
   return (s || '')
     .replace(/!\[.*?\]\(.*?\)/g, '[图片]')
-    .replace(/[#*`~>\[\]|]/g, '')
+    .replace(/[#*`~>[\]|]/g, '')
     .replace(/\n+/g, ' ')
     .trim()
 }
@@ -264,7 +263,11 @@ export function useEntries() {
       console.error('Save failed', err)
       return
     }
-    try { await db.deleteSnapshot(activeId.value) } catch { /* ok if missing */ }
+    try {
+      await db.deleteSnapshot(activeId.value)
+    } catch {
+      /* ok if missing */
+    }
     isDirty.value = false
     showToast('已保存')
   }
@@ -287,7 +290,11 @@ export function useEntries() {
     const entry = entries.value.find((e) => e.id === activeId.value)
     if (entry) {
       entry.updatedAt = Date.now()
-      try { await db.putSnapshot(activeId.value, toPlain(entry)) } catch { /* ignore */ }
+      try {
+        await db.putSnapshot(activeId.value, toPlain(entry))
+      } catch {
+        /* ignore */
+      }
     }
   }
 

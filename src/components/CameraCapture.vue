@@ -59,27 +59,30 @@ onUnmounted(() => {
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="stop">
-    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden w-[480px] max-w-[92vw]">
+    <div
+      class="bg-white dark:bg-[#141413] rounded-2xl shadow-2xl overflow-hidden w-[480px] max-w-[92vw]"
+    >
       <div class="relative bg-black">
-        <video
-          ref="video"
-          autoplay
-          playsinline
-          class="w-full aspect-[4/3] object-cover"
-        />
+        <video ref="video" autoplay playsinline class="w-full aspect-[4/3] object-cover" />
         <canvas ref="canvas" class="hidden" />
-        <div v-if="!ready && !error" class="absolute inset-0 flex items-center justify-center text-white text-sm">
+        <div
+          v-if="!ready && !error"
+          class="absolute inset-0 flex items-center justify-center text-white text-sm"
+        >
           启动摄像头中…
         </div>
-        <div v-if="error" class="absolute inset-0 flex items-center justify-center text-white text-sm px-4 text-center">
+        <div
+          v-if="error"
+          class="absolute inset-0 flex items-center justify-center text-white text-sm px-4 text-center"
+        >
           {{ error }}
         </div>
       </div>
       <div class="flex items-center justify-between px-5 py-3">
         <button
-          class="px-4 py-2 rounded-lg text-[13px] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all active:scale-95"
+          class="px-4 py-2 rounded-lg text-[13px] text-gray-500 dark:text-brand-mid hover:bg-gray-100 dark:hover:bg-[#1e1e1c] transition-all active:scale-95"
           @click="stop"
         >
           取消

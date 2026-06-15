@@ -19,22 +19,22 @@ function dayLabel(offset: number): string {
 }
 
 export const MASTERY_LEVEL_DEFS = [
-  { level: -1, label: '未复习', color: '#9ca3af' },
-  { level: 0, label: '未掌握', color: '#ef4444' },
-  { level: 1, label: '一次复习', color: '#f59e0b' },
-  { level: 2, label: '二次复习', color: '#6366f1' },
-  { level: 3, label: '三次复习', color: '#8b5cf6' },
-  { level: 4, label: '已掌握', color: '#22c55e' },
+  { level: -1, label: '未复习', color: '#b0aea5' },
+  { level: 0, label: '未掌握', color: '#d97757' },
+  { level: 1, label: '一次复习', color: '#e8a87c' },
+  { level: 2, label: '二次复习', color: '#6a9bcc' },
+  { level: 3, label: '三次复习', color: '#788c5d' },
+  { level: 4, label: '已掌握', color: '#5b8c4e' },
 ]
 
 export function getMasteryLabel(entry: NoteEntry): string {
   const level = getMasteryLevel(entry)
-  return MASTERY_LEVEL_DEFS.find(b => b.level === level)?.label ?? '未复习'
+  return MASTERY_LEVEL_DEFS.find((b) => b.level === level)?.label ?? '未复习'
 }
 
 export function getMasteryColor(entry: NoteEntry): string {
   const level = getMasteryLevel(entry)
-  return MASTERY_LEVEL_DEFS.find(b => b.level === level)?.color ?? '#9ca3af'
+  return MASTERY_LEVEL_DEFS.find((b) => b.level === level)?.color ?? '#9ca3af'
 }
 
 export function getMasteryLevel(entry: NoteEntry): number {
@@ -79,16 +79,15 @@ export function useStats(entries: Ref<NoteEntry[]>): StatsState {
 
   const totalCount = computed(() => entries.value.length)
 
-  const dueCount = computed(() =>
-    entries.value.filter((e) => {
-      const next = e.nextReviewDate
-      return next === undefined || next === 0 || next <= Date.now()
-    }).length,
+  const dueCount = computed(
+    () =>
+      entries.value.filter((e) => {
+        const next = e.nextReviewDate
+        return next === undefined || next === 0 || next <= Date.now()
+      }).length,
   )
 
-  const reviewedToday = computed(() =>
-    activeLogs.value.filter((l) => isToday(l.timestamp)).length,
-  )
+  const reviewedToday = computed(() => activeLogs.value.filter((l) => isToday(l.timestamp)).length)
 
   const totalReviews = computed(() => activeLogs.value.length)
 

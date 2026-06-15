@@ -9,9 +9,7 @@ function genId(): string {
 const notebooks = ref<Notebook[]>([])
 const activeId = ref<string | null>(null)
 
-const activeNotebook = computed(() =>
-  notebooks.value.find((n) => n.id === activeId.value),
-)
+const activeNotebook = computed(() => notebooks.value.find((n) => n.id === activeId.value))
 
 async function loadNotebooks() {
   try {
@@ -24,15 +22,29 @@ async function loadNotebooks() {
   }
 }
 
-async function createNotebook(name: string, description: string, instructions: string): Promise<Notebook> {
+async function createNotebook(
+  name: string,
+  description: string,
+  instructions: string,
+): Promise<Notebook> {
   const now = Date.now()
-  const nb: Notebook = { id: genId(), name, description, instructions, createdAt: now, updatedAt: now }
+  const nb: Notebook = {
+    id: genId(),
+    name,
+    description,
+    instructions,
+    createdAt: now,
+    updatedAt: now,
+  }
   await db.putNotebook(nb)
   notebooks.value.push(nb)
   return nb
 }
 
-async function updateNotebook(id: string, partial: Partial<Pick<Notebook, 'name' | 'description' | 'instructions'>>) {
+async function updateNotebook(
+  id: string,
+  partial: Partial<Pick<Notebook, 'name' | 'description' | 'instructions'>>,
+) {
   const nb = notebooks.value.find((n) => n.id === id)
   if (!nb) return
   Object.assign(nb, partial, { updatedAt: Date.now() })
@@ -51,15 +63,27 @@ const LAST_NOTEBOOK_KEY = 'cuotiben_last_notebook'
 
 function selectNotebook(id: string) {
   activeId.value = id
-  try { localStorage.setItem(LAST_NOTEBOOK_KEY, id) } catch {}
+  try {
+    localStorage.setItem(LAST_NOTEBOOK_KEY, id)
+  } catch {
+    /* ignore */
+  }
 }
 
 function restoreLastNotebook(): string | null {
-  try { return localStorage.getItem(LAST_NOTEBOOK_KEY) } catch { return null }
+  try {
+    return localStorage.getItem(LAST_NOTEBOOK_KEY)
+  } catch {
+    return null
+  }
 }
 
 function clearLastNotebook() {
-  try { localStorage.removeItem(LAST_NOTEBOOK_KEY) } catch {}
+  try {
+    localStorage.removeItem(LAST_NOTEBOOK_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 async function reorderNotebooks(orderedIds: string[]) {

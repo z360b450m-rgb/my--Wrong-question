@@ -7,9 +7,13 @@ with sync_playwright() as p:
     page.wait_for_load_state('networkidle')
     page.wait_for_timeout(1000)
 
-    # Open settings
-    page.locator('.fixed.bottom-6.left-6').click()
+    # Open settings via the sidebar button
+    page.locator('button:has-text("设置")').click()
     page.wait_for_timeout(500)
+
+    # Expand the review settings section (collapsed by default)
+    page.locator('button:has-text("复习设置")').click()
+    page.wait_for_timeout(300)
 
     html = page.content()
 

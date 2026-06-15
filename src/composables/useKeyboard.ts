@@ -77,7 +77,11 @@ export function useKeyboard(actions: KeyboardActions) {
       // Space to reveal answer
       if (e.key === ' ' && !e.ctrlKey && !e.metaKey) {
         const el = document.activeElement
-        if (!el || (el as HTMLElement).tagName === 'BODY' || (el as HTMLElement).tagName === 'DIV') {
+        if (
+          !el ||
+          (el as HTMLElement).tagName === 'BODY' ||
+          (el as HTMLElement).tagName === 'DIV'
+        ) {
           e.preventDefault()
           if (!actions.answered?.value) {
             actions.revealAnswer?.()
@@ -86,9 +90,16 @@ export function useKeyboard(actions: KeyboardActions) {
       }
       // Number keys to rate
       if (!e.ctrlKey && !e.metaKey && actions.answered?.value) {
-        if (e.key === '1') { e.preventDefault(); actions.rateCard?.('forgot') }
-        else if (e.key === '2') { e.preventDefault(); actions.rateCard?.('unfamiliar') }
-        else if (e.key === '3') { e.preventDefault(); actions.rateCard?.('mastered') }
+        if (e.key === '1') {
+          e.preventDefault()
+          actions.rateCard?.('forgot')
+        } else if (e.key === '2') {
+          e.preventDefault()
+          actions.rateCard?.('unfamiliar')
+        } else if (e.key === '3') {
+          e.preventDefault()
+          actions.rateCard?.('mastered')
+        }
       }
     }
   }

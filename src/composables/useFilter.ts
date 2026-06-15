@@ -80,7 +80,9 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
         list.sort((a, b) => (a.createdAt - b.createdAt) * dir)
         break
       case 'subject':
-        list.sort((a, b) => String(a.subject || '').localeCompare(String(b.subject || ''), 'zh') * dir)
+        list.sort(
+          (a, b) => String(a.subject || '').localeCompare(String(b.subject || ''), 'zh') * dir,
+        )
         break
       case 'title':
         list.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'zh') * dir)
@@ -138,7 +140,7 @@ export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
     for (const b of MASTERY_LEVEL_DEFS) map[b.label] = 0
     entries.value.forEach((e) => {
       const level = getMasteryLevel(e)
-      const bucket = MASTERY_LEVEL_DEFS.find(b => b.level === level)
+      const bucket = MASTERY_LEVEL_DEFS.find((b) => b.level === level)
       if (bucket) map[bucket.label]++
     })
     return map
