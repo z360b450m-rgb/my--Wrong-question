@@ -1,16 +1,16 @@
-import { ref, computed, onUnmounted } from 'vue';
-import type { NoteEntry } from '@/types';
-import { db } from '@/services/db';
-import { useReviewSettings } from '@/composables/useReviewSettings';
-import { useNotebooks } from '@/composables/useNotebooks';
+import { ref, computed, onUnmounted } from 'vue'
+import type { NoteEntry } from '@/types'
+import { db } from '@/services/db'
+import { useReviewSettings } from '@/composables/useReviewSettings'
+import { useNotebooks } from '@/composables/useNotebooks'
 
 // IndexedDB can't store Vue Proxy objects (structured clone error)
 function toPlain<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
+  return JSON.parse(JSON.stringify(obj))
 }
 
 function genId(): string {
-  return 'cuoti_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  return 'cuoti_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
 }
 
 function stripMd(s: string): string {
@@ -18,21 +18,21 @@ function stripMd(s: string): string {
     .replace(/!\[.*?\]\(.*?\)/g, '[图片]')
     .replace(/[#*`~>[\]|]/g, '')
     .replace(/\n+/g, ' ')
-    .trim();
+    .trim()
 }
 
 function isPlaceholderTitle(t: string): boolean {
-  return !t || /^无题目(\s*\(\d+\))?$/.test(t);
+  return !t || /^无题目(\s*\(\d+\))?$/.test(t)
 }
 
 function nextPlaceholderTitle(entries: NoteEntry[]): string {
-  let max = 0;
-  const re = /^无题目\s*\((\d+)\)$/;
+  let max = 0
+  const re = /^无题目\s*\((\d+)\)$/
   entries.forEach((e) => {
-    const m = e.title?.match(re);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  });
-  return '无题目 (' + (max + 1) + ')';
+    const m = e.title?.match(re)
+    if (m) max = Math.max(max, parseInt(m[1], 10))
+  })
+  return '无题目 (' + (max + 1) + ')'
 }
 
 // ===================================================================
@@ -42,174 +42,174 @@ function nextPlaceholderTitle(entries: NoteEntry[]): string {
 // 返回值类型签名必须向后兼容 —— 只能追加, 不可删除或重命名字段。
 // ===================================================================
 export function useEntries() {
-  const entries = ref<NoteEntry[]>([]);
-  const activeId = ref<string | null>(null);
-  const answersHidden = ref(false);
-  const toastMsg = ref('');
-  const showDeleteModal = ref(false);
-  const isDirty = ref(false);
-  const { settings } = useReviewSettings();
-  const { activeId: notebookId } = useNotebooks();
+  const entries = ref<NoteEntry[]>([])
+  const activeId = ref<string | null>(null)
+  const answersHidden = ref(false)
+  const toastMsg = ref('')
+  const showDeleteModal = ref(false)
+  const isDirty = ref(false)
+  const { settings } = useReviewSettings()
+  const { activeId: notebookId } = useNotebooks()
 
   const notebookEntries = computed(() =>
     notebookId.value
       ? entries.value.filter((e) => e.notebookId === notebookId.value)
       : entries.value,
-  );
+  )
 
   const activeEntry = computed<NoteEntry | undefined>(() =>
     entries.value.find((e) => e.id === activeId.value),
-  );
+  )
 
   // Batch selection
-  const selectedIds = ref<Set<string>>(new Set());
-  const lastSelectedIdx = ref<number>(-1);
+  const selectedIds = ref<Set<string>>(new Set())
+  const lastSelectedIdx = ref<number>(-1)
 
   function isSelected(id: string): boolean {
-    return selectedIds.value.has(id);
+    return selectedIds.value.has(id)
   }
 
   function toggleSelect(id: string) {
-    const s = selectedIds.value;
+    const s = selectedIds.value
     if (s.has(id)) {
-      s.delete(id);
+      s.delete(id)
     } else {
-      s.add(id);
+      s.add(id)
     }
-    selectedIds.value = new Set(s);
+    selectedIds.value = new Set(s)
   }
 
   function selectRange(ids: string[], fromIdx: number, toIdx: number) {
-    const s = new Set(selectedIds.value);
-    const start = Math.min(fromIdx, toIdx);
-    const end = Math.max(fromIdx, toIdx);
+    const s = new Set(selectedIds.value)
+    const start = Math.min(fromIdx, toIdx)
+    const end = Math.max(fromIdx, toIdx)
     for (let i = start; i <= end; i++) {
-      s.add(ids[i]);
+      s.add(ids[i])
     }
-    selectedIds.value = s;
-    lastSelectedIdx.value = toIdx;
+    selectedIds.value = s
+    lastSelectedIdx.value = toIdx
   }
 
   function selectAll(ids: string[]) {
-    selectedIds.value = new Set(ids);
+    selectedIds.value = new Set(ids)
   }
 
   function deselectAll() {
-    selectedIds.value = new Set();
-    lastSelectedIdx.value = -1;
+    selectedIds.value = new Set()
+    lastSelectedIdx.value = -1
   }
 
-  const selectedCount = computed(() => selectedIds.value.size);
+  const selectedCount = computed(() => selectedIds.value.size)
 
   // Batch delete
   async function batchDelete(ids: string[]) {
     for (const id of ids) {
-      await db.delete(id);
-      await db.deleteSnapshot(id);
+      await db.delete(id)
+      await db.deleteSnapshot(id)
     }
-    const idSet = new Set(ids);
-    entries.value = entries.value.filter((e) => !idSet.has(e.id));
+    const idSet = new Set(ids)
+    entries.value = entries.value.filter((e) => !idSet.has(e.id))
     if (activeId.value && idSet.has(activeId.value)) {
-      activeId.value = null;
-      isDirty.value = false;
+      activeId.value = null
+      isDirty.value = false
     }
-    deselectAll();
+    deselectAll()
   }
 
   // Batch tag
   async function batchTag(ids: string[], tags: string[]) {
-    const now = Date.now();
+    const now = Date.now()
     for (const id of ids) {
-      const entry = entries.value.find((e) => e.id === id);
+      const entry = entries.value.find((e) => e.id === id)
       if (entry) {
-        const existing = new Set(entry.tags);
-        for (const t of tags) existing.add(t);
-        entry.tags = Array.from(existing);
-        entry.updatedAt = now;
-        await db.put(toPlain(entry));
+        const existing = new Set(entry.tags)
+        for (const t of tags) existing.add(t)
+        entry.tags = Array.from(existing)
+        entry.updatedAt = now
+        await db.put(toPlain(entry))
       }
     }
-    deselectAll();
+    deselectAll()
   }
 
   // Batch export
   function batchExport(ids: string[]) {
-    const selected = entries.value.filter((e) => ids.includes(e.id));
-    const json = JSON.stringify(selected, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `错题本_${new Date().toISOString().slice(0, 10)}.json`;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast(`已导出 ${ids.length} 条错题`);
-    deselectAll();
+    const selected = entries.value.filter((e) => ids.includes(e.id))
+    const json = JSON.stringify(selected, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `错题本_${new Date().toISOString().slice(0, 10)}.json`
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showToast(`已导出 ${ids.length} 条错题`)
+    deselectAll()
   }
 
   // Periodic crash-protection snapshot (every 1s while dirty)
-  let snapshotTimer: ReturnType<typeof setInterval> | null = null;
+  let snapshotTimer: ReturnType<typeof setInterval> | null = null
 
   function startSnapshotTimer() {
-    if (snapshotTimer) return;
+    if (snapshotTimer) return
     snapshotTimer = setInterval(() => {
       if (isDirty.value && activeId.value) {
-        const entry = entries.value.find((e) => e.id === activeId.value);
-        if (entry) db.putSnapshot(activeId.value, toPlain(entry));
+        const entry = entries.value.find((e) => e.id === activeId.value)
+        if (entry) db.putSnapshot(activeId.value, toPlain(entry))
       }
-    }, 1000);
+    }, 1000)
   }
 
   onUnmounted(() => {
-    if (snapshotTimer) clearInterval(snapshotTimer);
-  });
+    if (snapshotTimer) clearInterval(snapshotTimer)
+  })
 
-  let loadSeq = 0;
+  let loadSeq = 0
 
   async function loadEntries() {
-    const seq = ++loadSeq;
+    const seq = ++loadSeq
     try {
-      const result = await db.getAll();
+      const result = await db.getAll()
       if (seq === loadSeq) {
-        entries.value = result;
+        entries.value = result
       }
     } catch {
       if (seq === loadSeq && entries.value.length === 0) {
-        entries.value = [];
+        entries.value = []
       }
     }
   }
 
   async function checkCrashRecovery(): Promise<NoteEntry[]> {
     try {
-      const snaps = await db.getAllSnapshots();
-      if (snaps.length === 0) return [];
-      const recovered: NoteEntry[] = [];
+      const snaps = await db.getAllSnapshots()
+      if (snaps.length === 0) return []
+      const recovered: NoteEntry[] = []
       for (const snap of snaps) {
-        const existing = entries.value.find((e) => e.id === snap.entryId);
+        const existing = entries.value.find((e) => e.id === snap.entryId)
         if (existing) {
           // Restore snapshot data into existing entry
-          Object.assign(existing, snap.data, { updatedAt: snap.data.updatedAt });
-          await db.put(toPlain(existing));
+          Object.assign(existing, snap.data, { updatedAt: snap.data.updatedAt })
+          await db.put(toPlain(existing))
         } else {
           // Entry was never saved — restore it
-          entries.value.push(snap.data);
-          await db.put(toPlain(snap.data));
-          recovered.push(snap.data);
+          entries.value.push(snap.data)
+          await db.put(toPlain(snap.data))
+          recovered.push(snap.data)
         }
       }
-      await db.deleteAllSnapshots();
-      return recovered;
+      await db.deleteAllSnapshots()
+      return recovered
     } catch {
-      return [];
+      return []
     }
   }
 
   async function createEntry(preselectSubject?: string) {
-    if (!notebookId.value) return;
+    if (!notebookId.value) return
     const entry: NoteEntry = {
       id: genId(),
       notebookId: notebookId.value,
@@ -225,73 +225,73 @@ export function useEntries() {
       nextReviewDate: Date.now() + settings.value.firstReviewDays * 86400000,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    };
-    await db.put(toPlain(entry));
-    entries.value.unshift(entry);
-    activeId.value = entry.id;
-    answersHidden.value = false;
-    isDirty.value = false;
-    startSnapshotTimer();
-    showToast('新错题已创建');
+    }
+    await db.put(toPlain(entry))
+    entries.value.unshift(entry)
+    activeId.value = entry.id
+    answersHidden.value = false
+    isDirty.value = false
+    startSnapshotTimer()
+    showToast('新错题已创建')
   }
 
   function loadEntry(id: string) {
-    activeId.value = id;
+    activeId.value = id
   }
 
   // Call this on every content mutation — marks dirty, does NOT save to DB
   function markDirty() {
-    isDirty.value = true;
-    startSnapshotTimer();
+    isDirty.value = true
+    startSnapshotTimer()
   }
 
   // Manual save — persists to DB, clears dirty flag, removes snapshot
   async function saveEntry() {
-    if (!activeId.value) return;
-    const entry = entries.value.find((e) => e.id === activeId.value);
-    if (!entry) return;
+    if (!activeId.value) return
+    const entry = entries.value.find((e) => e.id === activeId.value)
+    if (!entry) return
 
-    const qt = stripMd(entry.question);
+    const qt = stripMd(entry.question)
     if (qt && isPlaceholderTitle(entry.title)) {
-      entry.title = qt.slice(0, 40);
+      entry.title = qt.slice(0, 40)
     }
 
-    entry.updatedAt = Date.now();
+    entry.updatedAt = Date.now()
     try {
-      await db.put(toPlain(entry));
+      await db.put(toPlain(entry))
     } catch (err) {
-      console.error('Save failed', err);
-      return;
+      console.error('Save failed', err)
+      return
     }
     try {
-      await db.deleteSnapshot(activeId.value);
+      await db.deleteSnapshot(activeId.value)
     } catch {
       /* ok if missing */
     }
-    isDirty.value = false;
-    showToast('已保存');
+    isDirty.value = false
+    showToast('已保存')
   }
 
   // Discard changes — reload from DB
   async function discardChanges() {
-    if (!activeId.value) return;
-    const saved = await db.get(activeId.value);
+    if (!activeId.value) return
+    const saved = await db.get(activeId.value)
     if (saved) {
-      const idx = entries.value.findIndex((e) => e.id === activeId.value);
-      if (idx !== -1) entries.value[idx] = saved;
+      const idx = entries.value.findIndex((e) => e.id === activeId.value)
+      if (idx !== -1) entries.value[idx] = saved
     }
-    await db.deleteSnapshot(activeId.value);
-    isDirty.value = false;
+    await db.deleteSnapshot(activeId.value)
+    isDirty.value = false
   }
 
   // Snapshot save (for crash protection, called periodically)
   async function snapshotSave() {
-    if (!activeId.value || !isDirty.value) return;
-    const entry = entries.value.find((e) => e.id === activeId.value);
+    if (!activeId.value || !isDirty.value) return
+    const entry = entries.value.find((e) => e.id === activeId.value)
     if (entry) {
-      entry.updatedAt = Date.now();
+      entry.updatedAt = Date.now()
       try {
-        await db.putSnapshot(activeId.value, toPlain(entry));
+        await db.putSnapshot(activeId.value, toPlain(entry))
       } catch {
         /* ignore */
       }
@@ -299,61 +299,61 @@ export function useEntries() {
   }
 
   async function deleteCurrent() {
-    if (!activeId.value) return;
-    await db.delete(activeId.value);
-    await db.deleteSnapshot(activeId.value);
-    entries.value = entries.value.filter((e) => e.id !== activeId.value);
-    activeId.value = null;
-    isDirty.value = false;
-    showDeleteModal.value = false;
-    showToast('错题已删除');
+    if (!activeId.value) return
+    await db.delete(activeId.value)
+    await db.deleteSnapshot(activeId.value)
+    entries.value = entries.value.filter((e) => e.id !== activeId.value)
+    activeId.value = null
+    isDirty.value = false
+    showDeleteModal.value = false
+    showToast('错题已删除')
   }
 
   async function updateEntryTitle(id: string, newTitle: string) {
-    const entry = entries.value.find((e) => e.id === id);
-    if (!entry || !newTitle) return;
-    entry.title = newTitle;
-    entry.updatedAt = Date.now();
+    const entry = entries.value.find((e) => e.id === id)
+    if (!entry || !newTitle) return
+    entry.title = newTitle
+    entry.updatedAt = Date.now()
     try {
-      await db.put(toPlain(entry));
-      showToast('已重命名');
+      await db.put(toPlain(entry))
+      showToast('已重命名')
     } catch (err) {
-      console.error('Rename failed', err);
-      showToast('重命名失败');
+      console.error('Rename failed', err)
+      showToast('重命名失败')
     }
   }
 
-  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  let toastTimer: ReturnType<typeof setTimeout> | null = null
 
   function showToast(msg: string) {
-    if (toastTimer) clearTimeout(toastTimer);
-    toastMsg.value = msg;
+    if (toastTimer) clearTimeout(toastTimer)
+    toastMsg.value = msg
     toastTimer = setTimeout(() => {
-      toastMsg.value = '';
-      toastTimer = null;
-    }, 500);
+      toastMsg.value = ''
+      toastTimer = null
+    }, 500)
   }
 
   function openDeleteModal() {
-    showDeleteModal.value = true;
+    showDeleteModal.value = true
   }
 
   function closeDeleteModal() {
-    showDeleteModal.value = false;
+    showDeleteModal.value = false
   }
 
   async function reorderEntries(orderedIds: string[]) {
-    const now = Date.now();
-    const updates: Promise<void>[] = [];
+    const now = Date.now()
+    const updates: Promise<void>[] = []
     orderedIds.forEach((id, idx) => {
-      const entry = entries.value.find((e) => e.id === id);
+      const entry = entries.value.find((e) => e.id === id)
       if (entry) {
-        entry.sortOrder = idx;
-        entry.updatedAt = now;
-        updates.push(db.put(toPlain(entry)));
+        entry.sortOrder = idx
+        entry.updatedAt = now
+        updates.push(db.put(toPlain(entry)))
       }
-    });
-    await Promise.all(updates);
+    })
+    await Promise.all(updates)
   }
 
   return {
@@ -393,5 +393,5 @@ export function useEntries() {
     // utility exports for components
     stripMd,
     isPlaceholderTitle,
-  };
+  }
 }

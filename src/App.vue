@@ -1,24 +1,24 @@
 <script setup lang="ts">
 // @AI-NOTE: 根组件 —— 状态调度中心。数据通过 composables 获取,
 // 通过 props 传递、events 收集。禁止在此编写业务逻辑或直接操作存储。
-import { provide, computed, ref, watch, onMounted, onUnmounted } from 'vue';
-import { useEntries } from './composables/useEntries';
-import { migrateFromIndexedDB } from './services/db';
-import { useFilter } from './composables/useFilter';
-import type { SortKey, SortDir } from './composables/useFilter';
-import { useReview } from './composables/useReview';
-import { useReviewSettings } from './composables/useReviewSettings';
-import { useNotebooks } from './composables/useNotebooks';
-import { useDrawing } from './composables/useDrawing';
-import { useBackup } from './composables/useBackup';
-import { useExport } from './composables/useExport';
-import { useStats } from './composables/useStats';
-import { useKeyboard } from './composables/useKeyboard';
-import { useDarkMode } from './composables/useDarkMode';
-import Workspace from './components/Workspace.vue';
-import NotebookMenu from './components/NotebookMenu.vue';
-import SettingsPanel from './components/SettingsPanel.vue';
-import AppToast from './components/AppToast.vue';
+import { provide, computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { useEntries } from './composables/useEntries'
+import { migrateFromIndexedDB } from './services/db'
+import { useFilter } from './composables/useFilter'
+import type { SortKey, SortDir } from './composables/useFilter'
+import { useReview } from './composables/useReview'
+import { useReviewSettings } from './composables/useReviewSettings'
+import { useNotebooks } from './composables/useNotebooks'
+import { useDrawing } from './composables/useDrawing'
+import { useBackup } from './composables/useBackup'
+import { useExport } from './composables/useExport'
+import { useStats } from './composables/useStats'
+import { useKeyboard } from './composables/useKeyboard'
+import { useDarkMode } from './composables/useDarkMode'
+import Workspace from './components/Workspace.vue'
+import NotebookMenu from './components/NotebookMenu.vue'
+import SettingsPanel from './components/SettingsPanel.vue'
+import AppToast from './components/AppToast.vue'
 
 const {
   entries,
@@ -53,7 +53,7 @@ const {
   batchTag,
   batchExport,
   notebookEntries,
-} = useEntries();
+} = useEntries()
 
 const {
   notebooks,
@@ -63,8 +63,8 @@ const {
   loadNotebooks,
   restoreLastNotebook,
   clearLastNotebook,
-} = useNotebooks();
-const showNotebookMenu = ref(true);
+} = useNotebooks()
+const showNotebookMenu = ref(true)
 
 const {
   activeSubject,
@@ -82,7 +82,7 @@ const {
   setMastery,
   setSearch,
   setSort,
-} = useFilter(notebookEntries);
+} = useFilter(notebookEntries)
 
 const {
   mode,
@@ -104,9 +104,9 @@ const {
   exitReview,
   dismissSummary,
   loadLogs,
-} = useReview(notebookEntries, showToast);
+} = useReview(notebookEntries, showToast)
 
-useReviewSettings();
+useReviewSettings()
 
 const {
   drawingEnabled,
@@ -126,92 +126,92 @@ const {
   setCanvasParent,
   captureDrawing,
   setStoredDrawing,
-} = useDrawing();
+} = useDrawing()
 
-const { exportJSON, importJSON } = useBackup(
+const { exportData, importData } = useBackup(
   () => notebookEntries.value,
   () => activeNotebookId.value ?? '',
   loadEntries,
   showToast,
-);
-const { exportPDF } = useExport(showToast);
-const { isDark, toggleDark } = useDarkMode();
+)
+const { exportPDF } = useExport(showToast)
+const { isDark, toggleDark } = useDarkMode()
 
-const stats = useStats(notebookEntries);
-const statsOpen = ref(false);
-const settingsOpen = ref(false);
-const isElectron = computed(() => typeof window !== 'undefined' && !!window.electronAPI);
+const stats = useStats(notebookEntries)
+const statsOpen = ref(false)
+const settingsOpen = ref(false)
+const isElectron = computed(() => typeof window !== 'undefined' && !!window.electronAPI)
 
 // Unsaved changes flow
-const showUnsavedModal = ref(false);
-const pendingEntryId = ref<string | null>(null);
-const pendingAction = ref<'select' | 'create' | 'review' | null>(null);
-const pendingSubject = ref<string>('');
-const pendingForceReview = ref(false);
+const showUnsavedModal = ref(false)
+const pendingEntryId = ref<string | null>(null)
+const pendingAction = ref<'select' | 'create' | 'review' | null>(null)
+const pendingSubject = ref<string>('')
+const pendingForceReview = ref(false)
 
 async function handleEnterNotebook(id: string) {
-  selectNotebook(id);
-  showNotebookMenu.value = false;
-  await loadEntries();
-  await loadLogs();
+  selectNotebook(id)
+  showNotebookMenu.value = false
+  await loadEntries()
+  await loadLogs()
 }
 
 function handleReturnToMenu() {
-  clearLastNotebook();
-  showNotebookMenu.value = true;
-  activeId.value = null;
+  clearLastNotebook()
+  showNotebookMenu.value = true
+  activeId.value = null
 }
 
 onMounted(async () => {
-  await loadNotebooks();
+  await loadNotebooks()
 
   // Migrate from IndexedDB to file storage on first launch in Electron
-  const migrated = await migrateFromIndexedDB();
+  const migrated = await migrateFromIndexedDB()
   if (migrated > 0) {
-    await loadEntries();
-    await loadLogs();
-    showToast(`已迁移 ${migrated} 条错题到本地文件`);
+    await loadEntries()
+    await loadLogs()
+    showToast(`已迁移 ${migrated} 条错题到本地文件`)
   }
 
   // Check for crash recovery
-  const recovered = await checkCrashRecovery();
+  const recovered = await checkCrashRecovery()
   if (recovered.length > 0) {
-    showToast(`已恢复 ${recovered.length} 条未保存的内容`);
+    showToast(`已恢复 ${recovered.length} 条未保存的内容`)
   }
 
   // Restore last notebook — only show menu on first visit
-  const lastId = restoreLastNotebook();
+  const lastId = restoreLastNotebook()
   if (lastId && notebooks.value.some((n) => n.id === lastId)) {
-    selectNotebook(lastId);
-    showNotebookMenu.value = false;
-    await loadEntries();
-    await loadLogs();
+    selectNotebook(lastId)
+    showNotebookMenu.value = false
+    await loadEntries()
+    await loadLogs()
   }
-});
+})
 
 // Crash protection: save snapshot before unload
 function onBeforeUnload() {
-  syncDrawingToEntry();
-  snapshotSave();
+  syncDrawingToEntry()
+  snapshotSave()
 }
-onMounted(() => window.addEventListener('beforeunload', onBeforeUnload));
-onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload));
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
-provide('toast', showToast);
-provide('setCanvasParent', setCanvasParent);
-provide('drawingEnabled', drawingEnabled);
-provide('resizeCanvas', resizeCanvas);
+provide('toast', showToast)
+provide('setCanvasParent', setCanvasParent)
+provide('drawingEnabled', drawingEnabled)
+provide('resizeCanvas', resizeCanvas)
 
 useKeyboard({
   onCreate: () => handleCreate(),
   onSave: () => {
-    if (activeId.value) handleSave();
+    if (activeId.value) handleSave()
   },
   onToggleReveal: () => {
     if (mode.value === 'review') {
-      if (!answered.value) revealAnswer();
+      if (!answered.value) revealAnswer()
     } else {
-      answersHidden.value = !answersHidden.value;
+      answersHidden.value = !answersHidden.value
     }
   },
   onPrev: () => navigate(-1),
@@ -224,196 +224,196 @@ useKeyboard({
   drawingEnabled,
   onUndo: () => undo(),
   onRedo: () => redo(),
-});
+})
 
 function navigate(dir: number) {
-  if (!activeId.value) return;
-  const ids = filteredEntries.value.map((e) => e.id);
-  const idx = ids.indexOf(activeId.value);
-  const newIdx = idx + dir;
+  if (!activeId.value) return
+  const ids = filteredEntries.value.map((e) => e.id)
+  const idx = ids.indexOf(activeId.value)
+  const newIdx = idx + dir
   if (newIdx >= 0 && newIdx < ids.length) {
     if (isDirty.value) {
-      pendingEntryId.value = ids[newIdx];
-      pendingAction.value = 'select';
-      showUnsavedModal.value = true;
-      return;
+      pendingEntryId.value = ids[newIdx]
+      pendingAction.value = 'select'
+      showUnsavedModal.value = true
+      return
     }
-    loadEntry(ids[newIdx]);
+    loadEntry(ids[newIdx])
   }
 }
 
 function checkDirtyThen(action: () => void, nextAction: 'select' | 'create' | 'review') {
   if (isDirty.value) {
-    pendingAction.value = nextAction;
-    showUnsavedModal.value = true;
+    pendingAction.value = nextAction
+    showUnsavedModal.value = true
   } else {
-    action();
+    action()
   }
 }
 
 function handleCreate(subject?: string) {
-  pendingSubject.value = subject || '';
-  checkDirtyThen(() => createEntry(subject), 'create');
+  pendingSubject.value = subject || ''
+  checkDirtyThen(() => createEntry(subject), 'create')
 }
 
 function doCreate() {
-  createEntry(pendingSubject.value || undefined);
+  createEntry(pendingSubject.value || undefined)
 }
 
 function handleDelete() {
-  openDeleteModal();
+  openDeleteModal()
 }
 
 function handleConfirmDelete() {
-  deleteCurrent();
+  deleteCurrent()
 }
 
 // Batch actions
-const showBatchDeleteConfirm = ref(false);
+const showBatchDeleteConfirm = ref(false)
 
 function handleBatchDelete() {
-  showBatchDeleteConfirm.value = true;
+  showBatchDeleteConfirm.value = true
 }
 
 function confirmBatchDelete() {
-  showBatchDeleteConfirm.value = false;
-  batchDelete(Array.from(selectedIds.value));
-  showToast(`已删除 ${selectedCount.value} 条错题`);
+  showBatchDeleteConfirm.value = false
+  batchDelete(Array.from(selectedIds.value))
+  showToast(`已删除 ${selectedCount.value} 条错题`)
 }
 
 function cancelBatchDelete() {
-  showBatchDeleteConfirm.value = false;
+  showBatchDeleteConfirm.value = false
 }
 
 function handleBatchTag(tags: string[]) {
-  batchTag(Array.from(selectedIds.value), tags);
-  showToast(`已为 ${selectedCount.value} 条错题添加标签`);
+  batchTag(Array.from(selectedIds.value), tags)
+  showToast(`已为 ${selectedCount.value} 条错题添加标签`)
 }
 
 function handleBatchExport() {
-  batchExport(Array.from(selectedIds.value));
+  batchExport(Array.from(selectedIds.value))
 }
 
 function handleExportPDF() {
-  exportPDF(notebookEntries.value);
+  exportPDF(notebookEntries.value)
 }
 
 async function handleChangeDataDir() {
   if (!window.electronAPI) {
-    showToast('此功能仅在桌面端可用');
-    return;
+    showToast('此功能仅在桌面端可用')
+    return
   }
-  const newDir = await window.electronAPI.setDataDir();
-  showToast('数据目录已更改为：' + newDir);
+  const newDir = await window.electronAPI.setDataDir()
+  showToast('数据目录已更改为：' + newDir)
 }
 
 function handleSelectEntry(id: string) {
-  if (mode.value === 'review') exitReview();
-  if (activeId.value === id) return;
+  if (mode.value === 'review') exitReview()
+  if (activeId.value === id) return
   if (isDirty.value) {
-    pendingEntryId.value = id;
-    pendingAction.value = 'select';
-    showUnsavedModal.value = true;
-    return;
+    pendingEntryId.value = id
+    pendingAction.value = 'select'
+    showUnsavedModal.value = true
+    return
   }
-  loadEntry(id);
+  loadEntry(id)
 }
 
 function handleStartReview(force = false) {
   if (!force && dueCount.value === 0) {
-    showToast('今日复习已完成');
-    return;
+    showToast('今日复习已完成')
+    return
   }
-  pendingForceReview.value = force;
+  pendingForceReview.value = force
   checkDirtyThen(() => {
-    startReview(force);
-  }, 'review');
+    startReview(force)
+  }, 'review')
 }
 
 function handleMountCanvas(el: HTMLElement, entryId: string) {
-  mountCanvas(el);
+  mountCanvas(el)
   // Pre-populate store from persisted drawing data
-  const entry = entries.value.find((e) => e.id === entryId);
+  const entry = entries.value.find((e) => e.id === entryId)
   if (entry?.drawing) {
-    setStoredDrawing(entryId, entry.drawing);
+    setStoredDrawing(entryId, entry.drawing)
   }
-  loadDrawing(entryId);
+  loadDrawing(entryId)
 }
 
 function syncDrawingToEntry() {
-  if (!activeId.value) return;
-  const entry = entries.value.find((e) => e.id === activeId.value);
-  if (!entry) return;
-  const dataUrl = captureDrawing();
+  if (!activeId.value) return
+  const entry = entries.value.find((e) => e.id === activeId.value)
+  if (!entry) return
+  const dataUrl = captureDrawing()
   if (dataUrl) {
-    entry.drawing = dataUrl;
+    entry.drawing = dataUrl
   } else {
-    delete entry.drawing;
+    delete entry.drawing
   }
 }
 
 async function handleSave() {
-  syncDrawingToEntry();
-  await saveEntry();
+  syncDrawingToEntry()
+  await saveEntry()
 }
 
 function handleBlurSave() {
-  syncDrawingToEntry();
-  snapshotSave();
+  syncDrawingToEntry()
+  snapshotSave()
 }
 
 function doStartReview() {
-  startReview(pendingForceReview.value);
+  startReview(pendingForceReview.value)
 }
 
 function handleExitReview() {
-  exitReview();
+  exitReview()
 }
 
 // Unsaved modal handlers
 async function handleSaveAndProceed() {
-  await handleSave();
-  proceedAfterSave();
+  await handleSave()
+  proceedAfterSave()
 }
 
 function handleDiscardAndProceed() {
-  discardChanges();
-  proceedAfterSave();
+  discardChanges()
+  proceedAfterSave()
 }
 
 function handleCancelProceed() {
-  pendingEntryId.value = null;
-  pendingAction.value = null;
-  pendingSubject.value = '';
-  showUnsavedModal.value = false;
+  pendingEntryId.value = null
+  pendingAction.value = null
+  pendingSubject.value = ''
+  showUnsavedModal.value = false
 }
 
 function proceedAfterSave() {
-  showUnsavedModal.value = false;
-  const action = pendingAction.value;
-  pendingAction.value = null;
+  showUnsavedModal.value = false
+  const action = pendingAction.value
+  pendingAction.value = null
   if (action === 'select' && pendingEntryId.value) {
-    loadEntry(pendingEntryId.value);
-    pendingEntryId.value = null;
+    loadEntry(pendingEntryId.value)
+    pendingEntryId.value = null
   } else if (action === 'create') {
-    doCreate();
+    doCreate()
   } else if (action === 'review') {
-    doStartReview();
+    doStartReview()
   }
 }
 
 // Navigation state (edit mode only)
-const filteredIds = computed(() => filteredEntries.value.map((e) => e.id));
-const navIdx = computed(() => (activeId.value ? filteredIds.value.indexOf(activeId.value) : -1));
-const canGoPrev = computed(() => navIdx.value > 0);
-const canGoNext = computed(() => navIdx.value < filteredIds.value.length - 1 && navIdx.value >= 0);
+const filteredIds = computed(() => filteredEntries.value.map((e) => e.id))
+const navIdx = computed(() => (activeId.value ? filteredIds.value.indexOf(activeId.value) : -1))
+const canGoPrev = computed(() => navIdx.value > 0)
+const canGoNext = computed(() => navIdx.value < filteredIds.value.length - 1 && navIdx.value >= 0)
 
-loadEntries();
-loadLogs();
+loadEntries()
+loadLogs()
 
 watch(activeId, (_newId) => {
   // loadDrawing is called from handleMountCanvas after the canvas is ready
-});
+})
 </script>
 
 <template>
@@ -512,9 +512,9 @@ watch(activeId, (_newId) => {
     @cancel-batch-delete="cancelBatchDelete"
     @batch-tag="handleBatchTag"
     @batch-export="handleBatchExport"
-    @export-json="exportJSON"
+    @export-json="exportData"
     @export-pdf="handleExportPDF"
-    @import-json="importJSON"
+    @import-json="importData"
     @toggle-stats="statsOpen = !statsOpen"
     @toggle-settings="settingsOpen = !settingsOpen"
     @toggle-dark="toggleDark"

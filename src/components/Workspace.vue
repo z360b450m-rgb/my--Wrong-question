@@ -1,171 +1,171 @@
 <script setup lang="ts">
 // @AI-NOTE: 工作区布局组件 —— 仅编排子组件布局。数据通过 props/events
 // 委托给 App.vue, 禁止直接操作存储或编写业务逻辑。
-import { ref } from 'vue';
-import type { NoteEntry } from '@/types';
-import type { SortKey, SortDir } from '@/composables/useFilter';
-import type { StatsState } from '@/composables/useStats';
-import type { SessionRecord } from '@/composables/useReview';
-import { PEN_COLORS } from '@/composables/useDrawing';
-import AppSidebar from './AppSidebar.vue';
-import AppToolbar from './AppToolbar.vue';
-import NoteEditor from './NoteEditor.vue';
-import ReviewPanel from './ReviewPanel.vue';
-import DeleteModal from './DeleteModal.vue';
-import StatsPanel from './StatsPanel.vue';
-import UnsavedModal from './UnsavedModal.vue';
+import { ref } from 'vue'
+import type { NoteEntry } from '@/types'
+import type { SortKey, SortDir } from '@/composables/useFilter'
+import type { StatsState } from '@/composables/useStats'
+import type { SessionRecord } from '@/composables/useReview'
+import { PEN_COLORS } from '@/composables/useDrawing'
+import AppSidebar from './AppSidebar.vue'
+import AppToolbar from './AppToolbar.vue'
+import NoteEditor from './NoteEditor.vue'
+import ReviewPanel from './ReviewPanel.vue'
+import DeleteModal from './DeleteModal.vue'
+import StatsPanel from './StatsPanel.vue'
+import UnsavedModal from './UnsavedModal.vue'
 
 const props = defineProps<{
-  notebookName: string;
-  entries: NoteEntry[];
-  filteredEntries: NoteEntry[];
-  activeId: string | null;
-  activeEntry: NoteEntry | null | undefined;
-  answersHidden: boolean;
-  isDirty: boolean;
-  selectedIds: Set<string>;
-  selectedCount: number;
-  subjectMap: Record<string, number>;
-  tagMap: Record<string, number>;
-  masteryMap: Record<string, number>;
-  dueCount: number;
-  mode: 'edit' | 'review';
-  searchQuery: string;
-  sortKey: SortKey;
-  sortDir: SortDir;
-  canGoPrev: boolean;
-  canGoNext: boolean;
-  progress: string;
-  progressPercent: number;
-  drawingEnabled: boolean;
-  activeTool: string;
-  penColor: string;
-  canUndo: boolean;
-  canRedo: boolean;
-  showDeleteModal: boolean;
-  showBatchDeleteConfirm: boolean;
-  showUnsavedModal: boolean;
-  statsOpen: boolean;
-  settingsOpen: boolean;
-  stats: StatsState;
-  isElectron: boolean;
-  isDark: boolean;
-  currentCard: NoteEntry | null | undefined;
-  answered: boolean;
-  elapsedMs: number;
-  reviewedToday: number;
-  isReviewing: boolean;
-  sessionDone: boolean;
-  sessionRecords: SessionRecord[];
-  totalSessionMs: number;
-  reviewQueue: NoteEntry[];
-  activeSubject: string;
-  activeTag: string | null;
-  activeMastery: string;
-}>();
+  notebookName: string
+  entries: NoteEntry[]
+  filteredEntries: NoteEntry[]
+  activeId: string | null
+  activeEntry: NoteEntry | null | undefined
+  answersHidden: boolean
+  isDirty: boolean
+  selectedIds: Set<string>
+  selectedCount: number
+  subjectMap: Record<string, number>
+  tagMap: Record<string, number>
+  masteryMap: Record<string, number>
+  dueCount: number
+  mode: 'edit' | 'review'
+  searchQuery: string
+  sortKey: SortKey
+  sortDir: SortDir
+  canGoPrev: boolean
+  canGoNext: boolean
+  progress: string
+  progressPercent: number
+  drawingEnabled: boolean
+  activeTool: string
+  penColor: string
+  canUndo: boolean
+  canRedo: boolean
+  showDeleteModal: boolean
+  showBatchDeleteConfirm: boolean
+  showUnsavedModal: boolean
+  statsOpen: boolean
+  settingsOpen: boolean
+  stats: StatsState
+  isElectron: boolean
+  isDark: boolean
+  currentCard: NoteEntry | null | undefined
+  answered: boolean
+  elapsedMs: number
+  reviewedToday: number
+  isReviewing: boolean
+  sessionDone: boolean
+  sessionRecords: SessionRecord[]
+  totalSessionMs: number
+  reviewQueue: NoteEntry[]
+  activeSubject: string
+  activeTag: string | null
+  activeMastery: string
+}>()
 
 const emit = defineEmits<{
   // Notebook
-  'return-to-menu': [];
+  'return-to-menu': []
 
   // Entry selection
-  select: [id: string];
+  select: [id: string]
 
   // Filters
-  'filter-subject': [subject: string];
-  'filter-tag': [tag: string | null];
-  'filter-mastery': [label: string];
-  'filter-search': [query: string];
+  'filter-subject': [subject: string]
+  'filter-tag': [tag: string | null]
+  'filter-mastery': [label: string]
+  'filter-search': [query: string]
 
   // Sort & Reorder
-  'set-sort': [key: SortKey, dir?: SortDir];
-  reorder: [ids: string[]];
+  'set-sort': [key: SortKey, dir?: SortDir]
+  reorder: [ids: string[]]
 
   // Entry actions
-  'quick-create': [subject: string];
-  rename: [id: string, newTitle: string];
-  save: [];
-  'mark-dirty': [];
-  'blur-save': [];
-  delete: [];
-  'confirm-delete': [];
-  'close-delete-modal': [];
+  'quick-create': [subject: string]
+  rename: [id: string, newTitle: string]
+  save: []
+  'mark-dirty': []
+  'blur-save': []
+  delete: []
+  'confirm-delete': []
+  'close-delete-modal': []
 
   // Navigation
-  prev: [];
-  next: [];
-  'wheel-nav': [dir: number];
+  prev: []
+  next: []
+  'wheel-nav': [dir: number]
 
   // Review
-  'start-review': [force: boolean];
-  'exit-review': [];
-  'toggle-mode': [];
-  reveal: [];
-  'rate-card': [r: number | string, note: string];
-  'dismiss-summary': [];
+  'start-review': [force: boolean]
+  'exit-review': []
+  'toggle-mode': []
+  reveal: []
+  'rate-card': [r: number | string, note: string]
+  'dismiss-summary': []
 
   // Drawing
-  'toggle-drawing': [];
-  'set-tool': [tool: string];
-  'set-color': [color: string];
-  'clear-canvas': [];
-  undo: [];
-  redo: [];
-  'mount-canvas': [el: HTMLElement | null, entryId: string];
+  'toggle-drawing': []
+  'set-tool': [tool: string]
+  'set-color': [color: string]
+  'clear-canvas': []
+  undo: []
+  redo: []
+  'mount-canvas': [el: HTMLElement | null, entryId: string]
 
   // Batch
-  'toggle-select': [id: string];
-  'range-select': [ids: string[], fromIdx: number, toIdx: number];
-  'select-all': [ids: string[]];
-  'deselect-all': [];
-  'batch-delete': [];
-  'confirm-batch-delete': [];
-  'cancel-batch-delete': [];
-  'batch-tag': [tags: string[]];
-  'batch-export': [];
+  'toggle-select': [id: string]
+  'range-select': [ids: string[], fromIdx: number, toIdx: number]
+  'select-all': [ids: string[]]
+  'deselect-all': []
+  'batch-delete': []
+  'confirm-batch-delete': []
+  'cancel-batch-delete': []
+  'batch-tag': [tags: string[]]
+  'batch-export': []
 
   // Export/Import
-  'export-json': [];
-  'export-pdf': [];
-  'import-json': [];
+  'export-json': []
+  'export-pdf': []
+  'import-json': []
 
   // Stats
-  'toggle-stats': [];
+  'toggle-stats': []
 
   // Settings
-  'toggle-settings': [];
-  'toggle-dark': [];
-  'change-data-dir': [];
+  'toggle-settings': []
+  'toggle-dark': []
+  'change-data-dir': []
 
   // Unsaved modal
-  'save-and-proceed': [];
-  'discard-and-proceed': [];
-  'cancel-proceed': [];
-}>();
+  'save-and-proceed': []
+  'discard-and-proceed': []
+  'cancel-proceed': []
+}>()
 
-const mainArea = ref<HTMLElement | null>(null);
-let lastWheelNav = 0;
+const mainArea = ref<HTMLElement | null>(null)
+let lastWheelNav = 0
 
 function onWheel(e: WheelEvent) {
-  if (props.mode !== 'edit' || !props.activeId) return;
+  if (props.mode !== 'edit' || !props.activeId) return
 
   // Only allow wheel navigation from answer panels, not question area
-  const inAnswer = (e.target as HTMLElement).closest('.answer-panel');
-  if (!inAnswer) return;
+  const inAnswer = (e.target as HTMLElement).closest('.answer-panel')
+  if (!inAnswer) return
 
-  const scrollable = (e.target as HTMLElement).closest('.overflow-y-auto');
+  const scrollable = (e.target as HTMLElement).closest('.overflow-y-auto')
   if (scrollable) {
-    const el = scrollable as HTMLElement;
-    const atTop = el.scrollTop <= 1;
-    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-    if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
+    const el = scrollable as HTMLElement
+    const atTop = el.scrollTop <= 1
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+    if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return
   }
 
-  const now = Date.now();
-  if (now - lastWheelNav < 250) return;
-  lastWheelNav = now;
+  const now = Date.now()
+  if (now - lastWheelNav < 250) return
+  lastWheelNav = now
 
-  emit('wheel-nav', e.deltaY > 0 ? 1 : -1);
+  emit('wheel-nav', e.deltaY > 0 ? 1 : -1)
 }
 </script>
 

@@ -1,37 +1,37 @@
 <script setup lang="ts">
 // @AI-NOTE: 设置面板组件 —— 设置读写通过 useReviewSettings/
 // useDarkMode Hook。禁止直接操作 localStorage 或存储。
-import { reactive, ref, watch } from 'vue';
-import { useReviewSettings } from '@/composables/useReviewSettings';
+import { reactive, ref, watch } from 'vue'
+import { useReviewSettings } from '@/composables/useReviewSettings'
 
 defineProps<{
-  isDark: boolean;
-  isElectron: boolean;
-}>();
+  isDark: boolean
+  isElectron: boolean
+}>()
 
 const emit = defineEmits<{
-  close: [];
-  toggleDark: [];
-  changeDataDir: [];
-}>();
+  close: []
+  toggleDark: []
+  changeDataDir: []
+}>()
 
-const { settings, defaults } = useReviewSettings();
+const { settings, defaults } = useReviewSettings()
 
-const draft = reactive({ ...settings.value });
-const reviewExpanded = ref(false);
+const draft = reactive({ ...settings.value })
+const reviewExpanded = ref(false)
 
 // Reset draft when settings panel opens
 watch(
   settings,
   (val) => {
-    Object.assign(draft, val);
+    Object.assign(draft, val)
   },
   { immediate: true },
-);
+)
 
 function save() {
-  Object.assign(settings.value, { ...draft });
-  emit('close');
+  Object.assign(settings.value, { ...draft })
+  emit('close')
 }
 </script>
 
@@ -144,8 +144,8 @@ function save() {
                   :value="draft.firstReviewDays"
                   @input="
                     (e: Event) => {
-                      const v = parseInt((e.target as HTMLInputElement).value);
-                      if (v >= 0) draft.firstReviewDays = v;
+                      const v = parseInt((e.target as HTMLInputElement).value)
+                      if (v >= 0) draft.firstReviewDays = v
                     }
                   "
                   class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] text-gray-700 dark:text-brand-light-gray focus:outline-none focus:border-accent/40 transition-colors"
@@ -169,8 +169,8 @@ function save() {
                   :value="draft.unmasteredDays"
                   @input="
                     (e: Event) => {
-                      const v = parseInt((e.target as HTMLInputElement).value);
-                      if (v > 0) draft.unmasteredDays = v;
+                      const v = parseInt((e.target as HTMLInputElement).value)
+                      if (v > 0) draft.unmasteredDays = v
                     }
                   "
                   class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] text-gray-700 dark:text-brand-light-gray focus:outline-none focus:border-accent/40 transition-colors"
@@ -194,8 +194,8 @@ function save() {
                   :value="draft.masteredDays"
                   @input="
                     (e: Event) => {
-                      const v = parseInt((e.target as HTMLInputElement).value);
-                      if (v > 0) draft.masteredDays = v;
+                      const v = parseInt((e.target as HTMLInputElement).value)
+                      if (v > 0) draft.masteredDays = v
                     }
                   "
                   class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] text-gray-700 dark:text-brand-light-gray focus:outline-none focus:border-accent/40 transition-colors"
@@ -220,8 +220,8 @@ function save() {
                   :value="draft.growthFactor"
                   @input="
                     (e: Event) => {
-                      const v = parseFloat((e.target as HTMLInputElement).value);
-                      if (v >= 1.1) draft.growthFactor = v;
+                      const v = parseFloat((e.target as HTMLInputElement).value)
+                      if (v >= 1.1) draft.growthFactor = v
                     }
                   "
                   class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] text-gray-700 dark:text-brand-light-gray focus:outline-none focus:border-accent/40 transition-colors"
@@ -245,8 +245,8 @@ function save() {
                   :value="draft.maxInterval"
                   @input="
                     (e: Event) => {
-                      const v = parseInt((e.target as HTMLInputElement).value);
-                      if (v > 0) draft.maxInterval = v;
+                      const v = parseInt((e.target as HTMLInputElement).value)
+                      if (v > 0) draft.maxInterval = v
                     }
                   "
                   class="w-16 px-2.5 py-1.5 text-[13px] rounded-lg border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] text-gray-700 dark:text-brand-light-gray focus:outline-none focus:border-accent/40 transition-colors"

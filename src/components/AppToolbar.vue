@@ -1,63 +1,63 @@
 <script setup lang="ts">
 // @AI-NOTE: 工具栏组件 —— 所有操作通过 emit 事件委托给父组件。
 // 禁止在此直接操作存储或执行保存/删除等业务逻辑。
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue'
 
 defineProps<{
-  activeId: string | null;
-  answersHidden: boolean;
-  canGoPrev: boolean;
-  canGoNext: boolean;
-  searchQuery: string;
-  mode: 'edit' | 'review';
-  dueCount: number;
-  progress: string;
-  drawingEnabled: boolean;
-  statsOpen: boolean;
-  isDirty: boolean;
-}>();
+  activeId: string | null
+  answersHidden: boolean
+  canGoPrev: boolean
+  canGoNext: boolean
+  searchQuery: string
+  mode: 'edit' | 'review'
+  dueCount: number
+  progress: string
+  drawingEnabled: boolean
+  statsOpen: boolean
+  isDirty: boolean
+}>()
 
 const emit = defineEmits<{
-  search: [query: string];
-  new: [];
-  prev: [];
-  next: [];
-  reveal: [];
-  delete: [];
-  save: [];
-  toggleMode: [];
-  toggleDrawing: [];
-  toggleStats: [];
-  'export-json': [];
-  'export-pdf': [];
-  'import-json': [];
-}>();
+  search: [query: string]
+  new: []
+  prev: []
+  next: []
+  reveal: []
+  delete: []
+  save: []
+  toggleMode: []
+  toggleDrawing: []
+  toggleStats: []
+  'export-json': []
+  'export-pdf': []
+  'import-json': []
+}>()
 
-const moreMenuOpen = ref(false);
-const toolbarRef = ref<HTMLElement | null>(null);
-const compact = ref(false);
+const moreMenuOpen = ref(false)
+const toolbarRef = ref<HTMLElement | null>(null)
+const compact = ref(false)
 
-let observer: ResizeObserver | null = null;
+let observer: ResizeObserver | null = null
 
 onMounted(() => {
   if (toolbarRef.value) {
     observer = new ResizeObserver(([entry]) => {
-      compact.value = entry.contentRect.width < 680;
-    });
-    observer.observe(toolbarRef.value);
+      compact.value = entry.contentRect.width < 680
+    })
+    observer.observe(toolbarRef.value)
   }
-});
+})
 
 onUnmounted(() => {
-  observer?.disconnect();
-});
+  observer?.disconnect()
+})
 
 function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'delete') {
-  if (action === 'export-json') emit('export-json');
-  else if (action === 'export-pdf') emit('export-pdf');
-  else if (action === 'import') emit('import-json');
-  else if (action === 'delete') emit('delete');
-  moreMenuOpen.value = false;
+  if (action === 'export-json') emit('export-json')
+  else if (action === 'export-pdf') emit('export-pdf')
+  else if (action === 'import') emit('import-json')
+  else if (action === 'delete') emit('delete')
+  moreMenuOpen.value = false
 }
 </script>
 
@@ -420,7 +420,7 @@ function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'delete') 
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            导出 JSON
+            导出归档
           </button>
           <button
             class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-brand-light-gray hover:bg-gray-50 dark:hover:bg-[#2a2a28] transition-all duration-200 ease-out active:scale-95"
@@ -457,7 +457,7 @@ function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'delete') 
               <polyline points="3 10 8 15 13 10" />
               <line x1="8" y1="15" x2="8" y2="3" />
             </svg>
-            导入 JSON
+            导入归档
           </button>
           <div class="border-t border-gray-100 dark:border-[#2e2e2c] my-1" />
           <button

@@ -1,130 +1,130 @@
 <script setup lang="ts">
 // @AI-NOTE: 复习面板组件 —— 复习流程由 useReview Hook 驱动。
 // 禁止在此实现 SRS 算法、间隔计算、直接操作复习日志存储。
-import { ref, watch, nextTick, onUnmounted, computed } from 'vue';
-import type { NoteEntry } from '@/types';
-import type { SessionRecord } from '@/composables/useReview';
-import { getMasteryColor, getMasteryLabel } from '@/composables/useStats';
-import { sanitizeHtml } from '@/utils/sanitize';
+import { ref, watch, nextTick, onUnmounted, computed } from 'vue'
+import type { NoteEntry } from '@/types'
+import type { SessionRecord } from '@/composables/useReview'
+import { getMasteryColor, getMasteryLabel } from '@/composables/useStats'
+import { sanitizeHtml } from '@/utils/sanitize'
 
 const props = defineProps<{
-  entry: NoteEntry | undefined;
-  answered: boolean;
-  elapsedMs: number;
-  progress: string;
-  progressPercent: number;
-  dueCount: number;
-  reviewedToday: number;
-  isReviewing: boolean;
-  sessionDone: boolean;
-  sessionRecords: SessionRecord[];
-  totalSessionMs: number;
-  reviewQueue: NoteEntry[];
-}>();
+  entry: NoteEntry | undefined
+  answered: boolean
+  elapsedMs: number
+  progress: string
+  progressPercent: number
+  dueCount: number
+  reviewedToday: number
+  isReviewing: boolean
+  sessionDone: boolean
+  sessionRecords: SessionRecord[]
+  totalSessionMs: number
+  reviewQueue: NoteEntry[]
+}>()
 
 const emit = defineEmits<{
-  reveal: [];
-  rate: [rating: number | string, note: string];
-  startReview: [force: boolean];
-  exitReview: [];
-  dismissSummary: [];
-  'mount-canvas': [el: HTMLElement, entryId: string];
-}>();
+  reveal: []
+  rate: [rating: number | string, note: string]
+  startReview: [force: boolean]
+  exitReview: []
+  dismissSummary: []
+  'mount-canvas': [el: HTMLElement, entryId: string]
+}>()
 
-const showCorrect = ref(false);
-const note = ref('');
-const rated = ref(false);
+const showCorrect = ref(false)
+const note = ref('')
+const rated = ref(false)
 
 const sanitizedQuestion = computed(
   () =>
     sanitizeHtml(props.entry?.question || '') || "<span class='text-gray-300'>无题目内容</span>",
-);
+)
 const sanitizedWrongAnswer = computed(
   () =>
     sanitizeHtml(props.entry?.wrongAnswer || '') ||
     "<span class='text-gray-300 dark:text-[#4a4a48]'>无内容</span>",
-);
+)
 const sanitizedCorrectAnswer = computed(
   () =>
     sanitizeHtml(props.entry?.correctAnswer || '') ||
     "<span class='text-gray-300 dark:text-[#4a4a48]'>无内容</span>",
-);
+)
 
 function sanitizedFallback(html: string | undefined, fallback: string): string {
-  return sanitizeHtml(html || '') || fallback;
+  return sanitizeHtml(html || '') || fallback
 }
-const questionContentRef = ref<HTMLDivElement | null>(null);
-const questionPanelEl = ref<HTMLDivElement | null>(null);
-const resizeH = ref<HTMLDivElement | null>(null);
+const questionContentRef = ref<HTMLDivElement | null>(null)
+const questionPanelEl = ref<HTMLDivElement | null>(null)
+const resizeH = ref<HTMLDivElement | null>(null)
 
 interface ResizeState {
-  startY: number;
-  questionH: number;
-  containerH: number;
+  startY: number
+  questionH: number
+  containerH: number
 }
-let resizeState: ResizeState | null = null;
+let resizeState: ResizeState | null = null
 
 function startResize(e: MouseEvent) {
-  e.preventDefault();
-  if (!questionPanelEl.value) return;
-  const container = questionPanelEl.value.parentElement;
-  if (!container) return;
+  e.preventDefault()
+  if (!questionPanelEl.value) return
+  const container = questionPanelEl.value.parentElement
+  if (!container) return
   resizeState = {
     startY: e.clientY,
     questionH: questionPanelEl.value.offsetHeight,
     containerH: container.offsetHeight,
-  };
-  resizeH.value?.classList.add('dragging');
-  window.addEventListener('mousemove', onResize);
-  window.addEventListener('mouseup', stopResize);
+  }
+  resizeH.value?.classList.add('dragging')
+  window.addEventListener('mousemove', onResize)
+  window.addEventListener('mouseup', stopResize)
 }
 
 function onResize(e: MouseEvent) {
-  if (!resizeState || !questionPanelEl.value) return;
-  const r = resizeState;
-  const deltaY = e.clientY - r.startY;
-  const gap = 60;
-  const minQ = 80;
-  const minA = 200;
-  const maxQ = r.containerH - minA - gap;
-  const newQH = Math.max(minQ, Math.min(maxQ, r.questionH + deltaY));
-  questionPanelEl.value.style.flex = '0 0 ' + newQH + 'px';
+  if (!resizeState || !questionPanelEl.value) return
+  const r = resizeState
+  const deltaY = e.clientY - r.startY
+  const gap = 60
+  const minQ = 80
+  const minA = 200
+  const maxQ = r.containerH - minA - gap
+  const newQH = Math.max(minQ, Math.min(maxQ, r.questionH + deltaY))
+  questionPanelEl.value.style.flex = '0 0 ' + newQH + 'px'
 }
 
 function stopResize() {
-  resizeH.value?.classList.remove('dragging');
-  resizeState = null;
-  window.removeEventListener('mousemove', onResize);
-  window.removeEventListener('mouseup', stopResize);
+  resizeH.value?.classList.remove('dragging')
+  resizeState = null
+  window.removeEventListener('mousemove', onResize)
+  window.removeEventListener('mouseup', stopResize)
 }
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', onResize);
-  window.removeEventListener('mouseup', stopResize);
-});
+  window.removeEventListener('mousemove', onResize)
+  window.removeEventListener('mouseup', stopResize)
+})
 
 watch(
   () => props.entry,
   () => {
-    showCorrect.value = false;
-    note.value = '';
+    showCorrect.value = false
+    note.value = ''
     nextTick(() => {
       if (questionContentRef.value && props.entry?.id) {
-        emit('mount-canvas', questionContentRef.value, props.entry.id);
+        emit('mount-canvas', questionContentRef.value, props.entry.id)
       }
-    });
+    })
   },
   { immediate: true },
-);
+)
 
 function reveal() {
-  showCorrect.value = true;
-  rated.value = false;
-  emit('reveal');
+  showCorrect.value = true
+  rated.value = false
+  emit('reveal')
 }
 
 function showWrong() {
-  showCorrect.value = false;
+  showCorrect.value = false
 }
 
 const customRatings = [
@@ -149,41 +149,41 @@ const customRatings = [
     desc: '晋级',
     color: 'bg-emerald-500 hover:bg-emerald-600',
   },
-];
+]
 
 function currentMasteryHint(): string {
-  if (!props.entry) return '';
-  return `当前: ${getMasteryLabel(props.entry)}`;
+  if (!props.entry) return ''
+  return `当前: ${getMasteryLabel(props.entry)}`
 }
 
 function formatTime(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, '0')}`;
+  const s = Math.floor(ms / 1000)
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
 function formatTotalTime(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
+  const s = Math.floor(ms / 1000)
+  const m = Math.floor(s / 60)
   if (m > 0) {
-    const sec = s % 60;
-    return `${m} 分 ${sec} 秒`;
+    const sec = s % 60
+    return `${m} 分 ${sec} 秒`
   }
-  return `${s} 秒`;
+  return `${s} 秒`
 }
 
 function entryById(id: string): NoteEntry | undefined {
-  return props.reviewQueue.find((e) => e.id === id);
+  return props.reviewQueue.find((e) => e.id === id)
 }
 
 function masteryBucket(entry: NoteEntry | undefined) {
-  if (!entry) return null;
-  return { label: getMasteryLabel(entry), color: getMasteryColor(entry) };
+  if (!entry) return null
+  return { label: getMasteryLabel(entry), color: getMasteryColor(entry) }
 }
 
-const qualityLabels = ['遗忘', '错误', '勉强', '困难', '犹豫', '完美'];
-const qualityColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e'];
+const qualityLabels = ['遗忘', '错误', '勉强', '困难', '犹豫', '完美']
+const qualityColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e']
 
 function ratingLabel(q: number | string): string {
   if (typeof q === 'string') {
@@ -191,10 +191,10 @@ function ratingLabel(q: number | string): string {
       forgot: '完全未掌握',
       unfamiliar: '不熟练',
       mastered: '已掌握',
-    };
-    return map[q] || q;
+    }
+    return map[q] || q
   }
-  return qualityLabels[q] ?? String(q);
+  return qualityLabels[q] ?? String(q)
 }
 
 function ratingColor(q: number | string): string {
@@ -203,10 +203,10 @@ function ratingColor(q: number | string): string {
       forgot: '#ef4444',
       unfamiliar: '#f59e0b',
       mastered: '#22c55e',
-    };
-    return map[q] || '#9ca3af';
+    }
+    return map[q] || '#9ca3af'
   }
-  return qualityColors[q] ?? '#9ca3af';
+  return qualityColors[q] ?? '#9ca3af'
 }
 </script>
 
@@ -440,8 +440,8 @@ function ratingColor(q: number | string): string {
           :class="r.color"
           :title="`按 ${r.key} —— ${r.desc}`"
           @click="
-            rated = true;
-            emit('rate', r.r, note);
+            rated = true
+            emit('rate', r.r, note)
           "
         >
           <span class="text-lg font-bold">{{ r.key }}</span>

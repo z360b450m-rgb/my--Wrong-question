@@ -1,13 +1,13 @@
-import { ref } from 'vue';
-import type { ReviewLog } from '@/types';
-import { db } from '@/services/db';
+import { ref } from 'vue'
+import type { ReviewLog } from '@/types'
+import { db } from '@/services/db'
 
 function genId(): string {
-  return 'rvlog_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  return 'rvlog_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
 }
 
 // Module-scoped singleton — shared by useReview and useStats
-const reviewLogs = ref<ReviewLog[]>([]);
+const reviewLogs = ref<ReviewLog[]>([])
 
 // ===================================================================
 // @AI-GUIDE: 复习日志管理模块
@@ -18,9 +18,9 @@ const reviewLogs = ref<ReviewLog[]>([]);
 export function useReviewLogs() {
   async function loadLogs() {
     try {
-      reviewLogs.value = await db.getAllReviewLogs();
+      reviewLogs.value = await db.getAllReviewLogs()
     } catch {
-      reviewLogs.value = [];
+      reviewLogs.value = []
     }
   }
 
@@ -30,22 +30,22 @@ export function useReviewLogs() {
       entryId,
       timestamp: Date.now(),
       quality,
-    };
-    try {
-      await db.addReviewLog(log);
-    } catch (err) {
-      console.error('Failed to save review log', err);
     }
-    reviewLogs.value.push(log);
+    try {
+      await db.addReviewLog(log)
+    } catch (err) {
+      console.error('Failed to save review log', err)
+    }
+    reviewLogs.value.push(log)
   }
 
   async function deleteLogsByEntry(entryId: string) {
     try {
-      await db.deleteReviewLogsByEntry(entryId);
+      await db.deleteReviewLogsByEntry(entryId)
     } catch (err) {
-      console.error('Failed to delete review logs', err);
+      console.error('Failed to delete review logs', err)
     }
-    reviewLogs.value = reviewLogs.value.filter((l) => l.entryId !== entryId);
+    reviewLogs.value = reviewLogs.value.filter((l) => l.entryId !== entryId)
   }
 
   return {
@@ -53,5 +53,5 @@ export function useReviewLogs() {
     loadLogs,
     addLog,
     deleteLogsByEntry,
-  };
+  }
 }

@@ -2,13 +2,13 @@
 // @AI-NOTE: 标签筛选组件 —— 筛选状态由 useFilter Hook 管理。
 // 禁止在此实现筛选逻辑或直接操作存储。
 defineProps<{
-  activeTag: string | null;
-  tagMap: Record<string, number>;
-}>();
+  activeTag: string | null
+  tagMap: Record<string, number>
+}>()
 
 const emit = defineEmits<{
-  filter: [tag: string];
-}>();
+  filter: [tag: string]
+}>()
 </script>
 
 <template>

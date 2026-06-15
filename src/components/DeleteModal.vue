@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // @AI-NOTE: 删除确认对话框 —— 纯 UI 组件。删除逻辑由父组件通过
 // emit 事件驱动。禁止在此直接执行删除操作。
-defineProps<{ visible: boolean }>();
+defineProps<{ visible: boolean }>()
 const emit = defineEmits<{
-  confirm: [];
-  cancel: [];
-}>();
+  confirm: []
+  cancel: []
+}>()
 </script>
 
 <template>

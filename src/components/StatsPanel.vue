@@ -1,21 +1,21 @@
 <script setup lang="ts">
 // @AI-NOTE: 统计面板组件 —— 统计数据由 useStats Hook 计算。
 // 禁止在此直接计算统计指标或操作存储。
-import { computed } from 'vue';
-import type { StatsState } from '@/composables/useStats';
+import { computed } from 'vue'
+import type { StatsState } from '@/composables/useStats'
 
 const props = defineProps<{
-  stats: StatsState;
-}>();
+  stats: StatsState
+}>()
 
 const emit = defineEmits<{
-  close: [];
-}>();
+  close: []
+}>()
 
 const hueStep = computed(() => {
-  const n = props.stats.subjectBars.value.length || 1;
-  return 360 / n;
-});
+  const n = props.stats.subjectBars.value.length || 1
+  return 360 / n
+})
 </script>
 
 <template>

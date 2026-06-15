@@ -1,50 +1,50 @@
 <script setup lang="ts">
 // @AI-NOTE: 错题本菜单组件 —— 数据操作通过 useNotebooks Hook。
 // 禁止直接操作存储、编写业务逻辑、管理跨组件状态。
-import { ref, computed } from 'vue';
-import { useNotebooks } from '@/composables/useNotebooks';
-import { useEntries } from '@/composables/useEntries';
-import { useReviewLogs } from '@/composables/useReviewLogs';
-import { useDarkMode } from '@/composables/useDarkMode';
+import { ref, computed } from 'vue'
+import { useNotebooks } from '@/composables/useNotebooks'
+import { useEntries } from '@/composables/useEntries'
+import { useReviewLogs } from '@/composables/useReviewLogs'
+import { useDarkMode } from '@/composables/useDarkMode'
 
 const emit = defineEmits<{
-  enter: [id: string];
-  created: [id: string];
-  'open-settings': [];
-}>();
+  enter: [id: string]
+  created: [id: string]
+  'open-settings': []
+}>()
 
-const { isDark } = useDarkMode();
+const { isDark } = useDarkMode()
 const { notebooks, createNotebook, updateNotebook, deleteNotebook, reorderNotebooks } =
-  useNotebooks();
-const { entries, loadEntries } = useEntries();
-loadEntries();
-const { reviewLogs, loadLogs } = useReviewLogs();
-loadLogs();
+  useNotebooks()
+const { entries, loadEntries } = useEntries()
+loadEntries()
+const { reviewLogs, loadLogs } = useReviewLogs()
+loadLogs()
 
 const entryCountByNotebook = computed(() => {
-  const map: Record<string, number> = {};
+  const map: Record<string, number> = {}
   for (const e of entries.value) {
-    if (e.notebookId) map[e.notebookId] = (map[e.notebookId] || 0) + 1;
+    if (e.notebookId) map[e.notebookId] = (map[e.notebookId] || 0) + 1
   }
-  return map;
-});
+  return map
+})
 
 const totalEntries = computed(() => {
-  let sum = 0;
-  for (const c of Object.values(entryCountByNotebook.value)) sum += c;
-  return sum;
-});
+  let sum = 0
+  for (const c of Object.values(entryCountByNotebook.value)) sum += c
+  return sum
+})
 
 const reviewedToday = computed(() => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const t0 = today.getTime();
-  return reviewLogs.value.filter((l) => l.timestamp >= t0).length;
-});
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const t0 = today.getTime()
+  return reviewLogs.value.filter((l) => l.timestamp >= t0).length
+})
 
-const dotColors = ['#d97757', '#788c5d', '#6a9bcc', '#c56a48', '#5b7a9e', '#636b4a'];
+const dotColors = ['#d97757', '#788c5d', '#6a9bcc', '#c56a48', '#5b7a9e', '#636b4a']
 function dotColor(i: number) {
-  return dotColors[i % dotColors.length];
+  return dotColors[i % dotColors.length]
 }
 
 // ── Quotes ──
@@ -65,148 +65,148 @@ const quotes = [
   '知识是珍宝，但实践是得到它的钥匙。——托马斯·富勒',
   '节约时间，也就是使一个人的有限的生命，更加有效，而也就等于延长了人的寿命。——鲁迅',
   '行百里者半九十。——《战国策》',
-];
-const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+]
+const randomQuote = quotes[Math.floor(Math.random() * quotes.length)]
 
 // ── Nav ──
-const activeNav = ref<'home' | 'review' | 'report' | 'plan'>('home');
+const activeNav = ref<'home' | 'review' | 'report' | 'plan'>('home')
 
 // ── Search ──
-const searchQuery = ref('');
+const searchQuery = ref('')
 const filteredNotebooks = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return notebooks.value;
-  return notebooks.value.filter((n) => n.name.toLowerCase().includes(q));
-});
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return notebooks.value
+  return notebooks.value.filter((n) => n.name.toLowerCase().includes(q))
+})
 
 // ── Create notebook ──
-const showCreate = ref(false);
-const createName = ref('');
-const createDesc = ref('');
-const createErr = ref('');
+const showCreate = ref(false)
+const createName = ref('')
+const createDesc = ref('')
+const createErr = ref('')
 
 function openCreate() {
-  showCreate.value = true;
-  createName.value = '';
-  createDesc.value = '';
-  createErr.value = '';
+  showCreate.value = true
+  createName.value = ''
+  createDesc.value = ''
+  createErr.value = ''
 }
 function cancelCreate() {
-  showCreate.value = false;
+  showCreate.value = false
 }
 async function confirmCreate() {
-  if (!createName.value.trim()) return;
+  if (!createName.value.trim()) return
   try {
-    await createNotebook(createName.value.trim(), createDesc.value.trim(), '');
-    showCreate.value = false;
+    await createNotebook(createName.value.trim(), createDesc.value.trim(), '')
+    showCreate.value = false
   } catch {
-    createErr.value = '创建失败，请重试';
+    createErr.value = '创建失败，请重试'
   }
 }
 
 // ── Edit notebook ──
-const editingId = ref<string | null>(null);
-const editName = ref('');
-const editDesc = ref('');
+const editingId = ref<string | null>(null)
+const editName = ref('')
+const editDesc = ref('')
 function startEdit(nb: { id: string; name: string; description: string }) {
-  editingId.value = nb.id;
-  editName.value = nb.name;
-  editDesc.value = nb.description;
+  editingId.value = nb.id
+  editName.value = nb.name
+  editDesc.value = nb.description
 }
 function cancelEdit() {
-  editingId.value = null;
+  editingId.value = null
 }
 async function confirmEdit() {
-  if (!editingId.value || !editName.value.trim()) return;
+  if (!editingId.value || !editName.value.trim()) return
   await updateNotebook(editingId.value, {
     name: editName.value.trim(),
     description: editDesc.value.trim(),
-  });
-  editingId.value = null;
+  })
+  editingId.value = null
 }
 
 // ── Delete notebook ──
-const deletingId = ref<string | null>(null);
+const deletingId = ref<string | null>(null)
 function startDelete(id: string) {
-  deletingId.value = id;
+  deletingId.value = id
 }
 function cancelDelete() {
-  deletingId.value = null;
+  deletingId.value = null
 }
 async function confirmDelete() {
-  if (!deletingId.value) return;
-  await deleteNotebook(deletingId.value);
-  deletingId.value = null;
+  if (!deletingId.value) return
+  await deleteNotebook(deletingId.value)
+  deletingId.value = null
 }
 
 // ── Helpers ──
 function fmtTime(ts: number): string {
-  const d = new Date(ts);
-  const now = Date.now();
-  const diff = now - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '刚刚';
-  if (mins < 60) return `${mins} 分钟前`;
-  const hours = Math.floor(diff / 3600000);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(diff / 86400000);
-  if (days < 7) return `${days} 天前`;
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  const d = new Date(ts)
+  const now = Date.now()
+  const diff = now - ts
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return '刚刚'
+  if (mins < 60) return `${mins} 分钟前`
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 24) return `${hours} 小时前`
+  const days = Math.floor(diff / 86400000)
+  if (days < 7) return `${days} 天前`
+  return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 function shortDesc(desc: string): string {
-  if (!desc) return '';
-  return desc.length > 8 ? desc.slice(0, 8) + '…' : desc;
+  if (!desc) return ''
+  return desc.length > 8 ? desc.slice(0, 8) + '…' : desc
 }
 
 function onEnterNotebook(id: string) {
-  emit('enter', id);
+  emit('enter', id)
 }
 
 // ── Drag-and-drop within sidebar ──
-const draggedId = ref<string | null>(null);
-const dragOverIdx = ref<number | null>(null);
-let dragJustEnded = false;
+const draggedId = ref<string | null>(null)
+const dragOverIdx = ref<number | null>(null)
+let dragJustEnded = false
 
 function onDragStart(e: DragEvent, id: string) {
-  draggedId.value = id;
+  draggedId.value = id
   if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
   }
 }
 function onDragOver(e: DragEvent, idx: number) {
-  e.preventDefault();
-  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-  dragOverIdx.value = idx;
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dragOverIdx.value = idx
 }
 function onDragLeave() {
-  dragOverIdx.value = null;
+  dragOverIdx.value = null
 }
 function onDrop(e: DragEvent, dropIdx: number) {
-  e.preventDefault();
-  const srcId = draggedId.value;
-  dragOverIdx.value = null;
-  draggedId.value = null;
-  if (!srcId) return;
-  const ids = notebooks.value.map((n) => n.id);
-  const srcIdx = ids.indexOf(srcId);
-  if (srcIdx === -1 || srcIdx === dropIdx) return;
-  ids.splice(srcIdx, 1);
-  ids.splice(dropIdx, 0, srcId);
-  reorderNotebooks(ids);
+  e.preventDefault()
+  const srcId = draggedId.value
+  dragOverIdx.value = null
+  draggedId.value = null
+  if (!srcId) return
+  const ids = notebooks.value.map((n) => n.id)
+  const srcIdx = ids.indexOf(srcId)
+  if (srcIdx === -1 || srcIdx === dropIdx) return
+  ids.splice(srcIdx, 1)
+  ids.splice(dropIdx, 0, srcId)
+  reorderNotebooks(ids)
 }
 function onDragEnd() {
-  draggedId.value = null;
-  dragOverIdx.value = null;
-  dragJustEnded = true;
+  draggedId.value = null
+  dragOverIdx.value = null
+  dragJustEnded = true
   setTimeout(() => {
-    dragJustEnded = false;
-  }, 100);
+    dragJustEnded = false
+  }, 100)
 }
 function onNotebookClick(id: string) {
-  if (dragJustEnded) return;
-  emit('enter', id);
+  if (dragJustEnded) return
+  emit('enter', id)
 }
 </script>
 

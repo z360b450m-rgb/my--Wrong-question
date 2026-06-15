@@ -1,6 +1,9 @@
 dist
 dist-electron
 node_modules
+public
+.vscode
+*.md
 *.min.js
 *.min.css
 pnpm-lock.yaml

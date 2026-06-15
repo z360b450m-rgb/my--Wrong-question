@@ -1,73 +1,73 @@
 <script setup lang="ts">
 // @AI-NOTE: 条目列表组件 —— 条目展示/选择/排序由 useFilter/useEntries
 // Hook 驱动。禁止在此实现筛选/排序逻辑或直接操作存储。
-import { ref, nextTick, computed, onUnmounted } from 'vue';
-import type { NoteEntry } from '@/types';
-import type { SortKey } from '@/composables/useFilter';
-import { getMasteryColor } from '@/composables/useStats';
+import { ref, nextTick, computed, onUnmounted } from 'vue'
+import type { NoteEntry } from '@/types'
+import type { SortKey } from '@/composables/useFilter'
+import { getMasteryColor } from '@/composables/useStats'
 
 const props = defineProps<{
-  entries: NoteEntry[];
-  activeId: string | null;
-  sortKey: SortKey;
-  selectedIds: Set<string>;
-}>();
+  entries: NoteEntry[]
+  activeId: string | null
+  sortKey: SortKey
+  selectedIds: Set<string>
+}>()
 
 const emit = defineEmits<{
-  select: [id: string];
-  rename: [id: string, newTitle: string];
-  reorder: [orderedIds: string[]];
-  'toggle-select': [id: string];
-  'range-select': [ids: string[], fromIdx: number, toIdx: number];
-}>();
+  select: [id: string]
+  rename: [id: string, newTitle: string]
+  reorder: [orderedIds: string[]]
+  'toggle-select': [id: string]
+  'range-select': [ids: string[], fromIdx: number, toIdx: number]
+}>()
 
-const isCustomSort = computed(() => props.sortKey === 'custom');
-const dragId = ref<string | null>(null);
-const dragOverId = ref<string | null>(null);
+const isCustomSort = computed(() => props.sortKey === 'custom')
+const dragId = ref<string | null>(null)
+const dragOverId = ref<string | null>(null)
 
 function onDragStart(e: DragEvent, id: string) {
-  if (!isCustomSort.value) return;
-  dragId.value = id;
+  if (!isCustomSort.value) return
+  dragId.value = id
   if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
   }
 }
 
 function onDragOver(e: DragEvent, id: string) {
-  if (!isCustomSort.value) return;
-  e.preventDefault();
-  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-  dragOverId.value = id;
+  if (!isCustomSort.value) return
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dragOverId.value = id
 }
 
 function onDragLeave() {
-  dragOverId.value = null;
+  dragOverId.value = null
 }
 
 function onDrop(e: DragEvent, targetId: string) {
-  e.preventDefault();
-  dragOverId.value = null;
+  e.preventDefault()
+  dragOverId.value = null
   if (!dragId.value || dragId.value === targetId) {
-    dragId.value = null;
-    return;
+    dragId.value = null
+    return
   }
-  const ids = props.entries.map((en) => en.id);
-  const fromIdx = ids.indexOf(dragId.value);
-  const toIdx = ids.indexOf(targetId);
+  const ids = props.entries.map((en) => en.id)
+  const fromIdx = ids.indexOf(dragId.value)
+  const toIdx = ids.indexOf(targetId)
   if (fromIdx === -1 || toIdx === -1) {
-    dragId.value = null;
-    return;
+    dragId.value = null
+    return
   }
-  ids.splice(fromIdx, 1);
-  ids.splice(toIdx, 0, dragId.value);
-  dragId.value = null;
-  emit('reorder', ids);
+  ids.splice(fromIdx, 1)
+  ids.splice(toIdx, 0, dragId.value)
+  dragId.value = null
+  emit('reorder', ids)
 }
 
 function onDragEnd() {
-  dragId.value = null;
-  dragOverId.value = null;
+  dragId.value = null
+  dragOverId.value = null
 }
 
 function stripMd(s: string): string {
@@ -75,148 +75,148 @@ function stripMd(s: string): string {
     .replace(/!\[.*?\]\(.*?\)/g, '[图片]')
     .replace(/[#*`~>[\]|]/g, '')
     .replace(/\n+/g, ' ')
-    .trim();
+    .trim()
 }
 
 function preview(s: string, max: number): string {
-  const p = stripMd(s);
-  return p.length > max ? p.slice(0, max) + '…' : p;
+  const p = stripMd(s)
+  return p.length > max ? p.slice(0, max) + '…' : p
 }
 
 function masteryColor(entry: NoteEntry): string {
-  return getMasteryColor(entry);
+  return getMasteryColor(entry)
 }
 
 function formatDate(ts: number): string {
-  if (!ts) return '';
-  const diff = Date.now() - ts;
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
-  return new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  if (!ts) return ''
+  const diff = Date.now() - ts
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+  return new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
 
 function formatNextReview(ts?: number): { text: string; urgent: boolean } | null {
-  if (!ts) return null;
-  const now = Date.now();
-  const diffDays = Math.ceil((ts - now) / 86400000);
-  if (diffDays <= 0) return { text: '今天', urgent: true };
-  if (diffDays === 1) return { text: '明天', urgent: false };
-  if (diffDays <= 7) return { text: diffDays + '天后', urgent: false };
-  if (diffDays <= 30) return { text: diffDays + '天后', urgent: false };
+  if (!ts) return null
+  const now = Date.now()
+  const diffDays = Math.ceil((ts - now) / 86400000)
+  if (diffDays <= 0) return { text: '今天', urgent: true }
+  if (diffDays === 1) return { text: '明天', urgent: false }
+  if (diffDays <= 7) return { text: diffDays + '天后', urgent: false }
+  if (diffDays <= 30) return { text: diffDays + '天后', urgent: false }
   return {
     text: new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
     urgent: false,
-  };
+  }
 }
 
 // Checkbox click: toggle select or shift+click range select
 function onCheckClick(e: MouseEvent, id: string, idx: number) {
-  e.stopPropagation();
+  e.stopPropagation()
   if (e.shiftKey && props.selectedIds.size > 0) {
-    const ids = props.entries.map((en) => en.id);
-    let lastIdx = -1;
+    const ids = props.entries.map((en) => en.id)
+    let lastIdx = -1
     for (let i = ids.length - 1; i >= 0; i--) {
       if (props.selectedIds.has(ids[i])) {
-        lastIdx = i;
-        break;
+        lastIdx = i
+        break
       }
     }
     if (lastIdx >= 0) {
-      emit('range-select', ids, lastIdx, idx);
-      return;
+      emit('range-select', ids, lastIdx, idx)
+      return
     }
   }
-  emit('toggle-select', id);
+  emit('toggle-select', id)
 }
 
 // Click handling: single click navigates, Ctrl+click toggles select, Shift+click range selects
-let clickTimer: ReturnType<typeof setTimeout> | null = null;
+let clickTimer: ReturnType<typeof setTimeout> | null = null
 
 function onItemClick(e: MouseEvent, id: string, idx: number) {
   if (e.ctrlKey || e.metaKey) {
-    e.preventDefault();
-    emit('toggle-select', id);
-    return;
+    e.preventDefault()
+    emit('toggle-select', id)
+    return
   }
   if (e.shiftKey && props.selectedIds.size > 0) {
-    e.preventDefault();
-    const ids = props.entries.map((en) => en.id);
-    let lastIdx = -1;
+    e.preventDefault()
+    const ids = props.entries.map((en) => en.id)
+    let lastIdx = -1
     for (let i = ids.length - 1; i >= 0; i--) {
       if (props.selectedIds.has(ids[i])) {
-        lastIdx = i;
-        break;
+        lastIdx = i
+        break
       }
     }
     if (lastIdx >= 0) {
-      emit('range-select', ids, lastIdx, idx);
+      emit('range-select', ids, lastIdx, idx)
     }
-    return;
+    return
   }
 
   // Normal click: select entry
   if (clickTimer) {
-    clearTimeout(clickTimer);
-    clickTimer = null;
-    return;
+    clearTimeout(clickTimer)
+    clickTimer = null
+    return
   }
   clickTimer = setTimeout(() => {
-    clickTimer = null;
-    emit('select', id);
-  }, 250);
+    clickTimer = null
+    emit('select', id)
+  }, 250)
 }
 
 // Inline rename
-const renamingId = ref<string | null>(null);
+const renamingId = ref<string | null>(null)
 
 function getRenameInput(): HTMLInputElement | null {
-  return document.querySelector('input[data-renaming]');
+  return document.querySelector('input[data-renaming]')
 }
 
 function onDocumentMouseDown(e: MouseEvent) {
-  if (!renamingId.value) return;
-  const input = getRenameInput();
-  if (input && input.contains(e.target as Node)) return;
-  const entry = props.entries.find((en) => en.id === renamingId.value);
-  if (entry) finishRename(entry, true);
+  if (!renamingId.value) return
+  const input = getRenameInput()
+  if (input && input.contains(e.target as Node)) return
+  const entry = props.entries.find((en) => en.id === renamingId.value)
+  if (entry) finishRename(entry, true)
 }
 
 function startRename(id: string) {
-  renamingId.value = id;
-  document.addEventListener('mousedown', onDocumentMouseDown);
+  renamingId.value = id
+  document.addEventListener('mousedown', onDocumentMouseDown)
   nextTick(() => {
-    const input = getRenameInput();
-    input?.focus();
-    input?.select();
-  });
+    const input = getRenameInput()
+    input?.focus()
+    input?.select()
+  })
 }
 
 function finishRename(entry: NoteEntry, save: boolean) {
-  const input = getRenameInput();
-  if (!input || renamingId.value !== entry.id) return;
-  const newTitle = input.value.trim();
+  const input = getRenameInput()
+  if (!input || renamingId.value !== entry.id) return
+  const newTitle = input.value.trim()
   if (save && newTitle && newTitle !== entry.title) {
-    emit('rename', entry.id, newTitle);
+    emit('rename', entry.id, newTitle)
   }
-  renamingId.value = null;
-  document.removeEventListener('mousedown', onDocumentMouseDown);
+  renamingId.value = null
+  document.removeEventListener('mousedown', onDocumentMouseDown)
 }
 
 function onRenameKeydown(e: KeyboardEvent, entry: NoteEntry) {
   if (e.key === 'Enter') {
-    e.preventDefault();
-    finishRename(entry, true);
+    e.preventDefault()
+    finishRename(entry, true)
   }
   if (e.key === 'Escape') {
-    e.preventDefault();
-    finishRename(entry, false);
+    e.preventDefault()
+    finishRename(entry, false)
   }
 }
 
 onUnmounted(() => {
-  document.removeEventListener('mousedown', onDocumentMouseDown);
-});
+  document.removeEventListener('mousedown', onDocumentMouseDown)
+})
 </script>
 
 <template>

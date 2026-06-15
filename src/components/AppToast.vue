@@ -1,26 +1,26 @@
 <script setup lang="ts">
 // @AI-NOTE: Toast 通知组件 —— 纯 UI 组件。消息内容和可见性
 // 由父组件通过 props/events 控制, 不在此管理业务反馈逻辑。
-import { watch, ref } from 'vue';
+import { watch, ref } from 'vue'
 
-const props = defineProps<{ message: string }>();
-const visible = ref(false);
-let timer: ReturnType<typeof setTimeout> | null = null;
+const props = defineProps<{ message: string }>()
+const visible = ref(false)
+let timer: ReturnType<typeof setTimeout> | null = null
 
 watch(
   () => props.message,
   (msg) => {
-    if (timer) clearTimeout(timer);
+    if (timer) clearTimeout(timer)
     if (!msg) {
-      visible.value = false;
-      return;
+      visible.value = false
+      return
     }
-    visible.value = true;
+    visible.value = true
     timer = setTimeout(() => {
-      visible.value = false;
-    }, 1600);
+      visible.value = false
+    }, 1600)
   },
-);
+)
 </script>
 
 <template>

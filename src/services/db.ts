@@ -29,114 +29,114 @@
 // VIOLATION OF THESE RULES WILL CAUSE DATA CORRUPTION.
 // ===================================================================
 
-import type { NoteEntry, ReviewLog, Notebook } from '@/types';
+import type { NoteEntry, ReviewLog, Notebook } from '@/types'
 
-const STORE = 'entries';
-const SNAP_STORE = 'snapshots';
-const REVIEW_LOG_STORE = 'reviewLogs';
-const NOTEBOOK_STORE = 'notebooks';
+const STORE = 'entries'
+const SNAP_STORE = 'snapshots'
+const REVIEW_LOG_STORE = 'reviewLogs'
+const NOTEBOOK_STORE = 'notebooks'
 
 // ── Electron file-based storage (primary) ──────────────────────
 
 function isElectron(): boolean {
-  return typeof window !== 'undefined' && !!window.electronAPI;
+  return typeof window !== 'undefined' && !!window.electronAPI
 }
 
 const fileDb = {
   async getAll(): Promise<NoteEntry[]> {
-    return window.electronAPI!.getAll();
+    return window.electronAPI!.getAll()
   },
 
   async get(id: string): Promise<NoteEntry | undefined> {
-    const entry = await window.electronAPI!.get(id);
-    return entry ?? undefined;
+    const entry = await window.electronAPI!.get(id)
+    return entry ?? undefined
   },
 
   async put(entry: NoteEntry): Promise<void> {
-    await window.electronAPI!.put(entry);
+    await window.electronAPI!.put(entry)
   },
 
   async delete(id: string): Promise<void> {
-    await window.electronAPI!.delete(id);
+    await window.electronAPI!.delete(id)
   },
 
   async putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
-    await window.electronAPI!.putSnapshot({ entryId, data, savedAt: Date.now() });
+    await window.electronAPI!.putSnapshot({ entryId, data, savedAt: Date.now() })
   },
 
   async getSnapshot(
     entryId: string,
   ): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
-    const snap = await window.electronAPI!.getSnapshot(entryId);
-    return snap ?? undefined;
+    const snap = await window.electronAPI!.getSnapshot(entryId)
+    return snap ?? undefined
   },
 
   async getAllSnapshots(): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
-    return window.electronAPI!.getAllSnapshots();
+    return window.electronAPI!.getAllSnapshots()
   },
 
   async deleteSnapshot(entryId: string): Promise<void> {
-    await window.electronAPI!.deleteSnapshot(entryId);
+    await window.electronAPI!.deleteSnapshot(entryId)
   },
 
   async deleteAllSnapshots(): Promise<void> {
-    await window.electronAPI!.deleteAllSnapshots();
+    await window.electronAPI!.deleteAllSnapshots()
   },
 
   async getAllReviewLogs(): Promise<ReviewLog[]> {
-    return window.electronAPI!.getAllReviewLogs();
+    return window.electronAPI!.getAllReviewLogs()
   },
 
   async addReviewLog(log: ReviewLog): Promise<void> {
-    await window.electronAPI!.addReviewLog(log);
+    await window.electronAPI!.addReviewLog(log)
   },
 
   async deleteReviewLogsByEntry(entryId: string): Promise<void> {
-    await window.electronAPI!.deleteReviewLogsByEntry(entryId);
+    await window.electronAPI!.deleteReviewLogsByEntry(entryId)
   },
 
   async getAllNotebooks(): Promise<Notebook[]> {
-    return window.electronAPI!.getAllNotebooks();
+    return window.electronAPI!.getAllNotebooks()
   },
 
   async putNotebook(notebook: Notebook): Promise<void> {
-    await window.electronAPI!.putNotebook(notebook);
+    await window.electronAPI!.putNotebook(notebook)
   },
 
   async deleteNotebook(id: string): Promise<void> {
-    await window.electronAPI!.deleteNotebook(id);
+    await window.electronAPI!.deleteNotebook(id)
   },
-};
+}
 
 // ── IndexedDB fallback (browser dev mode) ───────────────────────
 
-const DB_NAME = 'CuotiDB';
-const DB_VERSION = 5;
+const DB_NAME = 'CuotiDB'
+const DB_VERSION = 5
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    const req = indexedDB.open(DB_NAME, DB_VERSION)
     req.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
+      const db = (e.target as IDBOpenDBRequest).result
       if (!db.objectStoreNames.contains(STORE)) {
-        const store = db.createObjectStore(STORE, { keyPath: 'id' });
-        store.createIndex('updatedAt', 'updatedAt', { unique: false });
-        store.createIndex('subject', 'subject', { unique: false });
+        const store = db.createObjectStore(STORE, { keyPath: 'id' })
+        store.createIndex('updatedAt', 'updatedAt', { unique: false })
+        store.createIndex('subject', 'subject', { unique: false })
       }
       if (!db.objectStoreNames.contains(SNAP_STORE)) {
-        db.createObjectStore(SNAP_STORE, { keyPath: 'entryId' });
+        db.createObjectStore(SNAP_STORE, { keyPath: 'entryId' })
       }
       if (!db.objectStoreNames.contains(REVIEW_LOG_STORE)) {
-        const rlStore = db.createObjectStore(REVIEW_LOG_STORE, { keyPath: 'id' });
-        rlStore.createIndex('entryId', 'entryId', { unique: false });
+        const rlStore = db.createObjectStore(REVIEW_LOG_STORE, { keyPath: 'id' })
+        rlStore.createIndex('entryId', 'entryId', { unique: false })
       }
       if (!db.objectStoreNames.contains(NOTEBOOK_STORE)) {
-        db.createObjectStore(NOTEBOOK_STORE, { keyPath: 'id' });
+        db.createObjectStore(NOTEBOOK_STORE, { keyPath: 'id' })
       }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
 }
 
 function tx<T>(
@@ -147,142 +147,142 @@ function tx<T>(
   return openDB().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const t = db.transaction(storeName, mode);
-        const store = t.objectStore(storeName);
-        const req = fn(store);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        const t = db.transaction(storeName, mode)
+        const store = t.objectStore(storeName)
+        const req = fn(store)
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
       }),
-  );
+  )
 }
 
 const idbDb = {
   getAll(): Promise<NoteEntry[]> {
-    return tx('readonly', (s) => s.getAll());
+    return tx('readonly', (s) => s.getAll())
   },
 
   get(id: string): Promise<NoteEntry | undefined> {
-    return tx('readonly', (s) => s.get(id));
+    return tx('readonly', (s) => s.get(id))
   },
 
   put(entry: NoteEntry): Promise<void> {
-    return tx('readwrite', (s) => s.put(entry)).then(() => undefined);
+    return tx('readwrite', (s) => s.put(entry)).then(() => undefined)
   },
 
   delete(id: string): Promise<void> {
-    return tx('readwrite', (s) => s.delete(id)).then(() => undefined);
+    return tx('readwrite', (s) => s.delete(id)).then(() => undefined)
   },
 
   putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
     return tx('readwrite', (s) => s.put({ entryId, data, savedAt: Date.now() }), SNAP_STORE).then(
       () => undefined,
-    );
+    )
   },
 
   getSnapshot(
     entryId: string,
   ): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
-    return tx('readonly', (s) => s.get(entryId), SNAP_STORE);
+    return tx('readonly', (s) => s.get(entryId), SNAP_STORE)
   },
 
   getAllSnapshots(): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
-    return tx('readonly', (s) => s.getAll(), SNAP_STORE);
+    return tx('readonly', (s) => s.getAll(), SNAP_STORE)
   },
 
   deleteSnapshot(entryId: string): Promise<void> {
-    return tx('readwrite', (s) => s.delete(entryId), SNAP_STORE).then(() => undefined);
+    return tx('readwrite', (s) => s.delete(entryId), SNAP_STORE).then(() => undefined)
   },
 
   deleteAllSnapshots(): Promise<void> {
-    return tx('readwrite', (s) => s.clear(), SNAP_STORE).then(() => undefined);
+    return tx('readwrite', (s) => s.clear(), SNAP_STORE).then(() => undefined)
   },
 
   getAllReviewLogs(): Promise<ReviewLog[]> {
-    return tx('readonly', (s) => s.getAll(), REVIEW_LOG_STORE);
+    return tx('readonly', (s) => s.getAll(), REVIEW_LOG_STORE)
   },
 
   addReviewLog(log: ReviewLog): Promise<void> {
-    return tx('readwrite', (s) => s.put(log), REVIEW_LOG_STORE).then(() => undefined);
+    return tx('readwrite', (s) => s.put(log), REVIEW_LOG_STORE).then(() => undefined)
   },
 
   deleteReviewLogsByEntry(entryId: string): Promise<void> {
     return tx(
       'readwrite',
       (s) => {
-        const idx = s.index('entryId');
-        return idx.getAllKeys(entryId);
+        const idx = s.index('entryId')
+        return idx.getAllKeys(entryId)
       },
       REVIEW_LOG_STORE,
     ).then((keys) => {
       const deletePromises = (keys as string[]).map((key) =>
         tx('readwrite', (s2) => s2.delete(key), REVIEW_LOG_STORE),
-      );
-      return Promise.all(deletePromises).then(() => undefined);
-    });
+      )
+      return Promise.all(deletePromises).then(() => undefined)
+    })
   },
 
   getAllNotebooks(): Promise<Notebook[]> {
-    return tx('readonly', (s) => s.getAll(), NOTEBOOK_STORE);
+    return tx('readonly', (s) => s.getAll(), NOTEBOOK_STORE)
   },
 
   putNotebook(notebook: Notebook): Promise<void> {
-    return tx('readwrite', (s) => s.put(notebook), NOTEBOOK_STORE).then(() => undefined);
+    return tx('readwrite', (s) => s.put(notebook), NOTEBOOK_STORE).then(() => undefined)
   },
 
   deleteNotebook(id: string): Promise<void> {
-    return tx('readwrite', (s) => s.delete(id), NOTEBOOK_STORE).then(() => undefined);
+    return tx('readwrite', (s) => s.delete(id), NOTEBOOK_STORE).then(() => undefined)
   },
-};
+}
 
 // ── Unified export ─────────────────────────────────────────────
 
-export const db = isElectron() ? fileDb : idbDb;
+export const db = isElectron() ? fileDb : idbDb
 
 // ── Migration: IndexedDB → file storage ─────────────────────────
 
 export async function migrateFromIndexedDB(): Promise<number> {
-  if (!isElectron()) return 0;
+  if (!isElectron()) return 0
 
   // If migration was already done, skip entirely — no IDB open needed
   try {
-    const alreadyMigrated = await window.electronAPI!.isIndexedDBMigrated();
-    if (alreadyMigrated) return 0;
+    const alreadyMigrated = await window.electronAPI!.isIndexedDBMigrated()
+    if (alreadyMigrated) return 0
   } catch {
     /* proceed */
   }
 
-  const existing = await fileDb.getAll();
+  const existing = await fileDb.getAll()
   if (existing.length > 0) {
     // Already has file data — mark migrated so future starts skip IDB
     try {
-      await window.electronAPI!.markIndexedDBMigrated();
+      await window.electronAPI!.markIndexedDBMigrated()
     } catch {
       /* ignore */
     }
-    return 0;
+    return 0
   }
 
   try {
-    const idbEntries = await idbDb.getAll();
+    const idbEntries = await idbDb.getAll()
     if (idbEntries.length === 0) {
       // No IDB data either — mark migrated so future starts skip IDB
       try {
-        await window.electronAPI!.markIndexedDBMigrated();
+        await window.electronAPI!.markIndexedDBMigrated()
       } catch {
         /* ignore */
       }
-      return 0;
+      return 0
     }
     for (const entry of idbEntries) {
-      await fileDb.put(entry);
+      await fileDb.put(entry)
     }
     try {
-      await window.electronAPI!.markIndexedDBMigrated();
+      await window.electronAPI!.markIndexedDBMigrated()
     } catch {
       /* ignore */
     }
-    return idbEntries.length;
+    return idbEntries.length
   } catch {
-    return 0;
+    return 0
   }
 }

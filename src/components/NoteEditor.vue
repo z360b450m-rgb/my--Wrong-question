@@ -1,185 +1,185 @@
 <script setup lang="ts">
 // @AI-NOTE: 编辑器组件 —— 数据读写通过 useEntries/useDrawing Hook。
 // 禁止直接操作数据库、实现 SRS 算法、管理条目生命周期。
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject, type Ref } from 'vue';
-import type { NoteEntry } from '@/types';
-import { useReviewLogs } from '@/composables/useReviewLogs';
-import CameraCapture from './CameraCapture.vue';
-import ScreenshotPicker from './ScreenshotPicker.vue';
-import AnswerPanel from './AnswerPanel.vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject, type Ref } from 'vue'
+import type { NoteEntry } from '@/types'
+import { useReviewLogs } from '@/composables/useReviewLogs'
+import CameraCapture from './CameraCapture.vue'
+import ScreenshotPicker from './ScreenshotPicker.vue'
+import AnswerPanel from './AnswerPanel.vue'
 
 const props = defineProps<{
-  entry: NoteEntry;
-  answersHidden: boolean;
-}>();
+  entry: NoteEntry
+  answersHidden: boolean
+}>()
 
 const emit = defineEmits<{
-  update: [];
-  reveal: [];
-  'blur-save': [];
-  'mount-canvas': [el: HTMLElement, entryId: string];
-}>();
+  update: []
+  reveal: []
+  'blur-save': []
+  'mount-canvas': [el: HTMLElement, entryId: string]
+}>()
 
 function onBlur() {
-  emit('blur-save');
+  emit('blur-save')
 }
 
 // Template refs
-const questionBody = ref<HTMLDivElement | null>(null);
-const questionContentRef = ref<HTMLDivElement | null>(null);
-const wrongPanelEl = ref<HTMLDivElement | null>(null);
-const correctPanelEl = ref<HTMLDivElement | null>(null);
-const questionPanelEl = ref<HTMLDivElement | null>(null);
-const answersRowEl = ref<HTMLDivElement | null>(null);
-const resizeH = ref<HTMLDivElement | null>(null);
-const resizeV = ref<HTMLDivElement | null>(null);
+const questionBody = ref<HTMLDivElement | null>(null)
+const questionContentRef = ref<HTMLDivElement | null>(null)
+const wrongPanelEl = ref<HTMLDivElement | null>(null)
+const correctPanelEl = ref<HTMLDivElement | null>(null)
+const questionPanelEl = ref<HTMLDivElement | null>(null)
+const answersRowEl = ref<HTMLDivElement | null>(null)
+const resizeH = ref<HTMLDivElement | null>(null)
+const resizeV = ref<HTMLDivElement | null>(null)
 
-let suppressInput = false;
+let suppressInput = false
 
 function onQuestionInput() {
-  if (suppressInput) return;
+  if (suppressInput) return
   if (questionBody.value) {
-    props.entry.question = questionBody.value.innerHTML;
+    props.entry.question = questionBody.value.innerHTML
   }
-  emit('update');
+  emit('update')
 }
 
 function onQuestionPaste(e: ClipboardEvent) {
-  const items = e.clipboardData?.items;
-  if (!items) return;
+  const items = e.clipboardData?.items
+  if (!items) return
   for (const item of items) {
     if (item.type.startsWith('image/')) {
-      e.preventDefault();
-      const blob = item.getAsFile();
-      if (!blob) continue;
-      const reader = new FileReader();
+      e.preventDefault()
+      const blob = item.getAsFile()
+      if (!blob) continue
+      const reader = new FileReader()
       reader.onload = () => {
-        const img = document.createElement('img');
-        img.src = reader.result as string;
-        img.style.maxWidth = '100%';
-        img.style.borderRadius = '6px';
-        const sel = window.getSelection();
-        if (!sel) return;
-        const range = sel.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(img);
-        range.collapse(false);
-        const br = document.createElement('br');
-        range.insertNode(br);
-        range.setStartAfter(br);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        questionBody.value?.focus();
-        onQuestionInput();
-      };
-      reader.readAsDataURL(blob);
-      break;
+        const img = document.createElement('img')
+        img.src = reader.result as string
+        img.style.maxWidth = '100%'
+        img.style.borderRadius = '6px'
+        const sel = window.getSelection()
+        if (!sel) return
+        const range = sel.getRangeAt(0)
+        range.deleteContents()
+        range.insertNode(img)
+        range.collapse(false)
+        const br = document.createElement('br')
+        range.insertNode(br)
+        range.setStartAfter(br)
+        range.collapse(true)
+        sel.removeAllRanges()
+        sel.addRange(range)
+        questionBody.value?.focus()
+        onQuestionInput()
+      }
+      reader.readAsDataURL(blob)
+      break
     }
   }
 }
 
 // Image tools for question panel
-const qCamOpen = ref(false);
-const qScreenshotOpen = ref(false);
-const qFileInput = ref<HTMLInputElement | null>(null);
+const qCamOpen = ref(false)
+const qScreenshotOpen = ref(false)
+const qFileInput = ref<HTMLInputElement | null>(null)
 
 function insertQuestionImage(src: string) {
-  const el = questionBody.value;
-  if (!el) return;
-  el.focus();
+  const el = questionBody.value
+  if (!el) return
+  el.focus()
 
-  const img = document.createElement('img');
-  img.src = src;
-  img.style.maxWidth = '100%';
-  img.style.borderRadius = '6px';
+  const img = document.createElement('img')
+  img.src = src
+  img.style.maxWidth = '100%'
+  img.style.borderRadius = '6px'
 
-  const sel = window.getSelection();
+  const sel = window.getSelection()
   if (sel && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(img);
-    range.collapse(false);
-    const br = document.createElement('br');
-    range.insertNode(br);
-    range.setStartAfter(br);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    const range = sel.getRangeAt(0)
+    range.deleteContents()
+    range.insertNode(img)
+    range.collapse(false)
+    const br = document.createElement('br')
+    range.insertNode(br)
+    range.setStartAfter(br)
+    range.collapse(true)
+    sel.removeAllRanges()
+    sel.addRange(range)
   } else {
-    el.appendChild(img);
-    el.appendChild(document.createElement('br'));
+    el.appendChild(img)
+    el.appendChild(document.createElement('br'))
   }
-  onQuestionInput();
+  onQuestionInput()
 }
 
 function onQuestionDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+  if (e.dataTransfer?.types.includes('Files')) e.preventDefault()
 }
 
 function onQuestionDrop(e: DragEvent) {
-  const files = e.dataTransfer?.files;
-  if (!files || files.length === 0) return;
-  e.preventDefault();
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+  e.preventDefault()
   for (const file of files) {
     if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => insertQuestionImage(reader.result as string);
-      reader.readAsDataURL(file);
-      break;
+      const reader = new FileReader()
+      reader.onload = () => insertQuestionImage(reader.result as string)
+      reader.readAsDataURL(file)
+      break
     }
   }
 }
 
 function openQuestionFilePicker() {
-  qFileInput.value?.click();
+  qFileInput.value?.click()
 }
 
 function onQuestionFileChange() {
-  const file = qFileInput.value?.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => insertQuestionImage(reader.result as string);
-  reader.readAsDataURL(file);
-  qFileInput.value!.value = '';
+  const file = qFileInput.value?.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => insertQuestionImage(reader.result as string)
+  reader.readAsDataURL(file)
+  qFileInput.value!.value = ''
 }
 
 function onQuestionCamCapture(dataUrl: string) {
-  qCamOpen.value = false;
-  insertQuestionImage(dataUrl);
+  qCamOpen.value = false
+  insertQuestionImage(dataUrl)
 }
 
 function onQuestionScreenshotCapture(dataUrl: string) {
-  qScreenshotOpen.value = false;
-  insertQuestionImage(dataUrl);
+  qScreenshotOpen.value = false
+  insertQuestionImage(dataUrl)
 }
 
-const drawingEnabled = inject<Ref<boolean>>('drawingEnabled', ref(false));
-const resizeCanvas = inject<() => void>('resizeCanvas', () => {});
+const drawingEnabled = inject<Ref<boolean>>('drawingEnabled', ref(false))
+const resizeCanvas = inject<() => void>('resizeCanvas', () => {})
 
 // Responsive: stack answers vertically when container is narrow
-const answersNarrow = ref(false);
-let answersObserver: ResizeObserver | null = null;
+const answersNarrow = ref(false)
+let answersObserver: ResizeObserver | null = null
 
 onMounted(() => {
-  if (!answersRowEl.value) return;
+  if (!answersRowEl.value) return
   answersObserver = new ResizeObserver((entries) => {
     for (const e of entries) {
-      answersNarrow.value = e.contentRect.width < 500;
+      answersNarrow.value = e.contentRect.width < 500
     }
-  });
-  answersObserver.observe(answersRowEl.value);
-});
+  })
+  answersObserver.observe(answersRowEl.value)
+})
 
 // Review history
-const { reviewLogs } = useReviewLogs();
-const historyOpen = ref(false);
+const { reviewLogs } = useReviewLogs()
+const historyOpen = ref(false)
 
 const entryLogs = computed(() =>
   reviewLogs.value
     .filter((l) => l.entryId === props.entry.id)
     .sort((a, b) => a.timestamp - b.timestamp),
-);
+)
 
 const QUALITY_DEFS: Record<number | string, { label: string; color: string }> = {
   0: { label: '遗忘', color: '#ef4444' },
@@ -191,15 +191,15 @@ const QUALITY_DEFS: Record<number | string, { label: string; color: string }> = 
   forgot: { label: '遗忘', color: '#ef4444' },
   unfamiliar: { label: '不熟练', color: '#f59e0b' },
   mastered: { label: '掌握', color: '#22c55e' },
-};
+}
 
 function qualityInfo(q: number | string) {
-  return QUALITY_DEFS[q] ?? { label: String(q), color: '#9ca3af' };
+  return QUALITY_DEFS[q] ?? { label: String(q), color: '#9ca3af' }
 }
 
 function fmtDate(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  const d = new Date(ts)
+  return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 // Set question content when entry changes, without v-html interference
@@ -208,40 +208,40 @@ watch(
   () => {
     nextTick(() => {
       if (questionBody.value) {
-        suppressInput = true;
-        questionBody.value.innerHTML = props.entry.question;
-        suppressInput = false;
+        suppressInput = true
+        questionBody.value.innerHTML = props.entry.question
+        suppressInput = false
       }
       if (questionContentRef.value) {
-        emit('mount-canvas', questionContentRef.value, props.entry.id);
+        emit('mount-canvas', questionContentRef.value, props.entry.id)
       }
-    });
+    })
   },
   { immediate: true },
-);
+)
 
 // Resize logic
 interface ResizeState {
-  type: 'h' | 'v';
-  startX: number;
-  startY: number;
-  questionH: number;
-  answersH: number;
-  wrongW: number;
-  correctW: number;
-  detailH: number;
+  type: 'h' | 'v'
+  startX: number
+  startY: number
+  questionH: number
+  answersH: number
+  wrongW: number
+  correctW: number
+  detailH: number
 }
 
-let resizeState: ResizeState | null = null;
+let resizeState: ResizeState | null = null
 
 function startResize(e: MouseEvent, type: 'h' | 'v') {
-  e.preventDefault();
-  if (!questionPanelEl.value || !answersRowEl.value) return;
+  e.preventDefault()
+  if (!questionPanelEl.value || !answersRowEl.value) return
 
-  const qp = questionPanelEl.value;
-  const ar = answersRowEl.value;
-  const detailEl = qp.parentElement;
-  if (!detailEl) return;
+  const qp = questionPanelEl.value
+  const ar = answersRowEl.value
+  const detailEl = qp.parentElement
+  if (!detailEl) return
 
   resizeState = {
     type,
@@ -252,68 +252,68 @@ function startResize(e: MouseEvent, type: 'h' | 'v') {
     wrongW: wrongPanelEl.value?.offsetWidth || 0,
     correctW: correctPanelEl.value?.offsetWidth || 0,
     detailH: detailEl.offsetHeight,
-  };
-  document.body.classList.add('resizing');
-  if (type === 'h') resizeH.value?.classList.add('dragging');
-  if (type === 'v') resizeV.value?.classList.add('dragging');
-  window.addEventListener('mousemove', onResize);
-  window.addEventListener('mouseup', stopResize);
+  }
+  document.body.classList.add('resizing')
+  if (type === 'h') resizeH.value?.classList.add('dragging')
+  if (type === 'v') resizeV.value?.classList.add('dragging')
+  window.addEventListener('mousemove', onResize)
+  window.addEventListener('mouseup', stopResize)
 }
 
 function onResize(e: MouseEvent) {
-  if (!resizeState) return;
-  const r = resizeState;
+  if (!resizeState) return
+  const r = resizeState
 
   if (r.type === 'h') {
-    const deltaY = e.clientY - r.startY;
-    const gap = 20; // detail gap + handle area
-    const minQ = 100;
-    const minA = 120;
-    const maxQ = r.detailH - minA - gap;
-    const newQH = Math.max(minQ, Math.min(maxQ, r.questionH + deltaY));
-    const pct = (newQH / (r.detailH - gap)) * 100;
+    const deltaY = e.clientY - r.startY
+    const gap = 20 // detail gap + handle area
+    const minQ = 100
+    const minA = 120
+    const maxQ = r.detailH - minA - gap
+    const newQH = Math.max(minQ, Math.min(maxQ, r.questionH + deltaY))
+    const pct = (newQH / (r.detailH - gap)) * 100
     if (questionPanelEl.value) {
-      questionPanelEl.value.style.height = pct + '%';
-      questionPanelEl.value.style.flex = '0 0 auto';
+      questionPanelEl.value.style.height = pct + '%'
+      questionPanelEl.value.style.flex = '0 0 auto'
     }
     if (answersRowEl.value) {
-      answersRowEl.value.style.flex = '1';
+      answersRowEl.value.style.flex = '1'
     }
   }
 
   if (r.type === 'v') {
-    const deltaX = e.clientX - r.startX;
-    const totalW = r.wrongW + r.correctW;
-    const minW = 150;
-    const maxW = totalW - minW;
-    const newWrongW = Math.max(minW, Math.min(maxW, r.wrongW + deltaX));
-    const wrongPct = (newWrongW / totalW) * 100;
+    const deltaX = e.clientX - r.startX
+    const totalW = r.wrongW + r.correctW
+    const minW = 150
+    const maxW = totalW - minW
+    const newWrongW = Math.max(minW, Math.min(maxW, r.wrongW + deltaX))
+    const wrongPct = (newWrongW / totalW) * 100
     if (wrongPanelEl.value) {
-      wrongPanelEl.value.style.flex = `0 0 ${wrongPct}%`;
+      wrongPanelEl.value.style.flex = `0 0 ${wrongPct}%`
     }
     if (correctPanelEl.value) {
-      correctPanelEl.value.style.flex = '1';
+      correctPanelEl.value.style.flex = '1'
     }
   }
 
-  resizeCanvas();
+  resizeCanvas()
 }
 
 function stopResize() {
-  document.body.classList.remove('resizing');
-  resizeH.value?.classList.remove('dragging');
-  resizeV.value?.classList.remove('dragging');
-  resizeState = null;
-  window.removeEventListener('mousemove', onResize);
-  window.removeEventListener('mouseup', stopResize);
-  resizeCanvas();
+  document.body.classList.remove('resizing')
+  resizeH.value?.classList.remove('dragging')
+  resizeV.value?.classList.remove('dragging')
+  resizeState = null
+  window.removeEventListener('mousemove', onResize)
+  window.removeEventListener('mouseup', stopResize)
+  resizeCanvas()
 }
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', onResize);
-  window.removeEventListener('mouseup', stopResize);
-  answersObserver?.disconnect();
-});
+  window.removeEventListener('mousemove', onResize)
+  window.removeEventListener('mouseup', stopResize)
+  answersObserver?.disconnect()
+})
 </script>
 
 <template>
@@ -327,8 +327,8 @@ onUnmounted(() => {
         placeholder="学科（如：言语）"
         :value="entry.subject"
         @input="
-          entry.subject = ($event.target as HTMLInputElement).value;
-          emit('update');
+          entry.subject = ($event.target as HTMLInputElement).value
+          emit('update')
         "
         @blur="onBlur"
       />
@@ -338,8 +338,8 @@ onUnmounted(() => {
         placeholder="来源（如：月考）"
         :value="entry.source"
         @input="
-          entry.source = ($event.target as HTMLInputElement).value;
-          emit('update');
+          entry.source = ($event.target as HTMLInputElement).value
+          emit('update')
         "
         @blur="onBlur"
       />
@@ -352,8 +352,8 @@ onUnmounted(() => {
           entry.tags = ($event.target as HTMLInputElement).value
             .split(',')
             .map((t) => t.trim())
-            .filter(Boolean);
-          emit('update');
+            .filter(Boolean)
+          emit('update')
         "
         @blur="onBlur"
       />
@@ -542,8 +542,8 @@ onUnmounted(() => {
           :model-value="entry.wrongAnswer"
           :entry-id="entry.id"
           @update:model-value="
-            entry.wrongAnswer = $event;
-            emit('update');
+            entry.wrongAnswer = $event
+            emit('update')
           "
           @reveal="emit('reveal')"
           @blur="onBlur"
@@ -569,8 +569,8 @@ onUnmounted(() => {
           :model-value="entry.correctAnswer"
           :entry-id="entry.id"
           @update:model-value="
-            entry.correctAnswer = $event;
-            emit('update');
+            entry.correctAnswer = $event
+            emit('update')
           "
           @reveal="emit('reveal')"
           @blur="onBlur"

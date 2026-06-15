@@ -2,14 +2,14 @@
 // @AI-NOTE: 未保存确认对话框 —— 纯 UI 组件。保存/丢弃/取消逻辑
 // 由父组件通过 emit 事件驱动。
 defineProps<{
-  visible: boolean;
-}>();
+  visible: boolean
+}>()
 
 const emit = defineEmits<{
-  save: [];
-  discard: [];
-  cancel: [];
-}>();
+  save: []
+  discard: []
+  cancel: []
+}>()
 </script>
 
 <template>

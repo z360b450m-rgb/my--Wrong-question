@@ -1,49 +1,49 @@
 <script setup lang="ts">
 // @AI-NOTE: 桌面截图选择器 (仅 Electron) —— 通过 desktopCapturer
 // 获取屏幕缩略图, 截图结果通过 emit 发送。不在此操作业务数据。
-import { ref, onMounted, onUnmounted } from 'vue';
-import ImageCropper from './ImageCropper.vue';
+import { ref, onMounted, onUnmounted } from 'vue'
+import ImageCropper from './ImageCropper.vue'
 
 const emit = defineEmits<{
-  capture: [dataUrl: string];
-  close: [];
-}>();
+  capture: [dataUrl: string]
+  close: []
+}>()
 
 interface Source {
-  id: string;
-  name: string;
-  thumbnail: string;
-  appIcon: string | null;
+  id: string
+  name: string
+  thumbnail: string
+  appIcon: string | null
 }
 
-const sources = ref<Source[]>([]);
-const loading = ref(true);
-const error = ref('');
-const capturing = ref<string | null>(null);
-const video = ref<HTMLVideoElement | null>(null);
-const canvas = ref<HTMLCanvasElement | null>(null);
+const sources = ref<Source[]>([])
+const loading = ref(true)
+const error = ref('')
+const capturing = ref<string | null>(null)
+const video = ref<HTMLVideoElement | null>(null)
+const canvas = ref<HTMLCanvasElement | null>(null)
 
 // After capture, show cropper before emitting
-const cropMode = ref(false);
-const capturedImage = ref('');
+const cropMode = ref(false)
+const capturedImage = ref('')
 
 onMounted(async () => {
   try {
-    const api = window.electronAPI;
+    const api = window.electronAPI
     if (!api) {
-      error.value = '截屏功能仅在桌面端可用';
-      loading.value = false;
-      return;
+      error.value = '截屏功能仅在桌面端可用'
+      loading.value = false
+      return
     }
-    sources.value = await api.getDesktopSources();
+    sources.value = await api.getDesktopSources()
   } catch {
-    error.value = '获取屏幕源失败';
+    error.value = '获取屏幕源失败'
   }
-  loading.value = false;
-});
+  loading.value = false
+})
 
 async function captureSource(source: Source) {
-  capturing.value = source.id;
+  capturing.value = source.id
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -54,52 +54,52 @@ async function captureSource(source: Source) {
         },
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Chrome non-standard constraints
-    } as any);
+    } as any)
 
-    if (!video.value) return;
+    if (!video.value) return
 
-    video.value.srcObject = stream;
-    await video.value.play();
+    video.value.srcObject = stream
+    await video.value.play()
 
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 200))
 
-    const c = canvas.value!;
-    const v = video.value;
-    c.width = v.videoWidth;
-    c.height = v.videoHeight;
-    const ctx = c.getContext('2d')!;
-    ctx.drawImage(v, 0, 0);
-    capturedImage.value = c.toDataURL('image/png');
-    cropMode.value = true;
+    const c = canvas.value!
+    const v = video.value
+    c.width = v.videoWidth
+    c.height = v.videoHeight
+    const ctx = c.getContext('2d')!
+    ctx.drawImage(v, 0, 0)
+    capturedImage.value = c.toDataURL('image/png')
+    cropMode.value = true
 
-    stream.getTracks().forEach((t) => t.stop());
-    video.value.srcObject = null;
+    stream.getTracks().forEach((t) => t.stop())
+    video.value.srcObject = null
   } catch {
-    capturedImage.value = source.thumbnail;
-    cropMode.value = true;
+    capturedImage.value = source.thumbnail
+    cropMode.value = true
   }
-  capturing.value = null;
+  capturing.value = null
 }
 
 function onCrop(dataUrl: string) {
-  emit('capture', dataUrl);
+  emit('capture', dataUrl)
 }
 
 function onSkipCrop() {
-  emit('capture', capturedImage.value);
+  emit('capture', capturedImage.value)
 }
 
 function onCancelCrop() {
-  cropMode.value = false;
-  capturedImage.value = '';
+  cropMode.value = false
+  capturedImage.value = ''
 }
 
 onUnmounted(() => {
   if (video.value?.srcObject) {
-    const stream = video.value.srcObject as MediaStream;
-    stream.getTracks().forEach((t) => t.stop());
+    const stream = video.value.srcObject as MediaStream
+    stream.getTracks().forEach((t) => t.stop())
   }
-});
+})
 </script>
 
 <template>

@@ -1,61 +1,61 @@
 <script setup lang="ts">
 // @AI-NOTE: 摄像头拍照组件 —— 封装 WebRTC 媒体捕获。拍照结果
 // 通过 emit 发送 DataURL, 不在此存储或操作业务数据。
-import { ref, onUnmounted } from 'vue';
+import { ref, onUnmounted } from 'vue'
 
 const emit = defineEmits<{
-  capture: [dataUrl: string];
-  close: [];
-}>();
+  capture: [dataUrl: string]
+  close: []
+}>()
 
-const video = ref<HTMLVideoElement | null>(null);
-const canvas = ref<HTMLCanvasElement | null>(null);
-const stream = ref<MediaStream | null>(null);
-const error = ref('');
-const ready = ref(false);
+const video = ref<HTMLVideoElement | null>(null)
+const canvas = ref<HTMLCanvasElement | null>(null)
+const stream = ref<MediaStream | null>(null)
+const error = ref('')
+const ready = ref(false)
 
 async function start() {
-  error.value = '';
+  error.value = ''
   try {
     stream.value = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-    });
+    })
     if (video.value) {
-      video.value.srcObject = stream.value;
-      ready.value = true;
+      video.value.srcObject = stream.value
+      ready.value = true
     }
   } catch {
-    error.value = '无法访问摄像头，请检查权限设置';
+    error.value = '无法访问摄像头，请检查权限设置'
   }
 }
 
 function capture() {
-  if (!video.value || !canvas.value) return;
-  const v = video.value;
-  const c = canvas.value;
-  c.width = v.videoWidth;
-  c.height = v.videoHeight;
-  const ctx = c.getContext('2d');
-  if (!ctx) return;
-  ctx.drawImage(v, 0, 0);
-  const dataUrl = c.toDataURL('image/jpeg', 0.9);
-  emit('capture', dataUrl);
+  if (!video.value || !canvas.value) return
+  const v = video.value
+  const c = canvas.value
+  c.width = v.videoWidth
+  c.height = v.videoHeight
+  const ctx = c.getContext('2d')
+  if (!ctx) return
+  ctx.drawImage(v, 0, 0)
+  const dataUrl = c.toDataURL('image/jpeg', 0.9)
+  emit('capture', dataUrl)
 }
 
 function stop() {
   if (stream.value) {
-    stream.value.getTracks().forEach((t) => t.stop());
-    stream.value = null;
+    stream.value.getTracks().forEach((t) => t.stop())
+    stream.value = null
   }
-  ready.value = false;
-  emit('close');
+  ready.value = false
+  emit('close')
 }
 
-start();
+start()
 
 onUnmounted(() => {
-  stop();
-});
+  stop()
+})
 </script>
 
 <template>

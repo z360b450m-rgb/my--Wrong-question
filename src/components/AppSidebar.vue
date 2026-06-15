@@ -1,60 +1,60 @@
 <script setup lang="ts">
 // @AI-NOTE: 侧边栏组件 —— 筛选/排序/条目选择由 useFilter/useEntries
 // Hook 驱动。禁止在此实现筛选逻辑或直接操作数据库。
-import { ref } from 'vue';
-import type { NoteEntry } from '@/types';
-import type { SortKey, SortDir } from '@/composables/useFilter';
-import SubjectChips from './SubjectChips.vue';
-import TagDots from './TagDots.vue';
-import EntryList from './EntryList.vue';
-import { MASTERY_LEVEL_DEFS } from '@/composables/useStats';
+import { ref } from 'vue'
+import type { NoteEntry } from '@/types'
+import type { SortKey, SortDir } from '@/composables/useFilter'
+import SubjectChips from './SubjectChips.vue'
+import TagDots from './TagDots.vue'
+import EntryList from './EntryList.vue'
+import { MASTERY_LEVEL_DEFS } from '@/composables/useStats'
 
 const props = defineProps<{
-  notebookName: string;
-  entries: NoteEntry[];
-  filteredEntries: NoteEntry[];
-  activeId: string | null;
-  activeSubject: string;
-  activeTag: string | null;
-  activeMastery: string;
-  sortKey: SortKey;
-  sortDir: SortDir;
-  subjectMap: Record<string, number>;
-  tagMap: Record<string, number>;
-  masteryMap: Record<string, number>;
-  dueCount: number;
-  mode: 'edit' | 'review';
-  selectedIds: Set<string>;
-  selectedCount: number;
-}>();
+  notebookName: string
+  entries: NoteEntry[]
+  filteredEntries: NoteEntry[]
+  activeId: string | null
+  activeSubject: string
+  activeTag: string | null
+  activeMastery: string
+  sortKey: SortKey
+  sortDir: SortDir
+  subjectMap: Record<string, number>
+  tagMap: Record<string, number>
+  masteryMap: Record<string, number>
+  dueCount: number
+  mode: 'edit' | 'review'
+  selectedIds: Set<string>
+  selectedCount: number
+}>()
 
 const emit = defineEmits<{
-  select: [id: string];
-  'return-to-menu': [];
-  filterSubject: [subject: string];
-  filterTag: [tag: string];
-  filterMastery: [label: string];
-  quickCreate: [subject: string];
-  rename: [id: string, newTitle: string];
-  startReview: [];
-  setSort: [key: SortKey, dir?: SortDir];
-  reorder: [orderedIds: string[]];
-  'toggle-select': [id: string];
-  'range-select': [ids: string[], fromIdx: number, toIdx: number];
-  'select-all': [ids: string[]];
-  'deselect-all': [];
-  'batch-delete': [];
-  'batch-tag': [tags: string[]];
-  'batch-export': [];
-  'toggle-settings': [];
-}>();
+  select: [id: string]
+  'return-to-menu': []
+  filterSubject: [subject: string]
+  filterTag: [tag: string]
+  filterMastery: [label: string]
+  quickCreate: [subject: string]
+  rename: [id: string, newTitle: string]
+  startReview: []
+  setSort: [key: SortKey, dir?: SortDir]
+  reorder: [orderedIds: string[]]
+  'toggle-select': [id: string]
+  'range-select': [ids: string[], fromIdx: number, toIdx: number]
+  'select-all': [ids: string[]]
+  'deselect-all': []
+  'batch-delete': []
+  'batch-tag': [tags: string[]]
+  'batch-export': []
+  'toggle-settings': []
+}>()
 
-const collapsed = ref(false);
-const sortOpen = ref(false);
-const batchMenuOpen = ref(false);
-const tagInputOpen = ref(false);
-const masteryOpen = ref(false);
-const tagText = ref('');
+const collapsed = ref(false)
+const sortOpen = ref(false)
+const batchMenuOpen = ref(false)
+const tagInputOpen = ref(false)
+const masteryOpen = ref(false)
+const tagText = ref('')
 
 const sortOptions: { key: SortKey; label: string }[] = [
   { key: 'updatedAt', label: '更新时间' },
@@ -63,61 +63,61 @@ const sortOptions: { key: SortKey; label: string }[] = [
   { key: 'title', label: '标题' },
   { key: 'custom', label: '自定义' },
   { key: 'shuffle', label: '乱序' },
-];
+]
 
 function handleSortSelect(key: SortKey) {
-  emit('setSort', key);
-  sortOpen.value = false;
+  emit('setSort', key)
+  sortOpen.value = false
 }
 
 function handleSelectAll() {
   if (props.selectedCount === props.filteredEntries.length && props.selectedCount > 0) {
-    emit('deselect-all');
+    emit('deselect-all')
   } else {
     emit(
       'select-all',
       props.filteredEntries.map((e) => e.id),
-    );
+    )
   }
-  batchMenuOpen.value = false;
+  batchMenuOpen.value = false
 }
 
 function handleDeselectAll() {
-  emit('deselect-all');
-  batchMenuOpen.value = false;
+  emit('deselect-all')
+  batchMenuOpen.value = false
 }
 
 function handleBatchDelete() {
-  emit('batch-delete');
-  batchMenuOpen.value = false;
+  emit('batch-delete')
+  batchMenuOpen.value = false
 }
 
 function handleBatchExport() {
-  emit('batch-export');
-  batchMenuOpen.value = false;
+  emit('batch-export')
+  batchMenuOpen.value = false
 }
 
 function openTagInput() {
-  tagText.value = '';
-  tagInputOpen.value = true;
+  tagText.value = ''
+  tagInputOpen.value = true
 }
 
 function confirmTags() {
   const tags = tagText.value
     .split(/[,，]/)
     .map((t) => t.trim())
-    .filter(Boolean);
+    .filter(Boolean)
   if (tags.length > 0) {
-    emit('batch-tag', tags);
+    emit('batch-tag', tags)
   }
-  tagInputOpen.value = false;
-  batchMenuOpen.value = false;
-  tagText.value = '';
+  tagInputOpen.value = false
+  batchMenuOpen.value = false
+  tagText.value = ''
 }
 
 function cancelTags() {
-  tagInputOpen.value = false;
-  tagText.value = '';
+  tagInputOpen.value = false
+  tagText.value = ''
 }
 </script>
 
@@ -316,12 +316,12 @@ function cancelTags() {
                 @mouseenter="
                   (e: MouseEvent) => {
                     if (activeMastery !== b.label)
-                      (e.target as HTMLElement).style.boxShadow = `0 0 0 1px ${b.color}40`;
+                      (e.target as HTMLElement).style.boxShadow = `0 0 0 1px ${b.color}40`
                   }
                 "
                 @mouseleave="
                   (e: MouseEvent) => {
-                    if (activeMastery !== b.label) (e.target as HTMLElement).style.boxShadow = '';
+                    if (activeMastery !== b.label) (e.target as HTMLElement).style.boxShadow = ''
                   }
                 "
                 @click="emit('filterMastery', b.label)"

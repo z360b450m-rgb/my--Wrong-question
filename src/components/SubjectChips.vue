@@ -2,16 +2,16 @@
 // @AI-NOTE: 学科筛选组件 —— 筛选状态由 useFilter Hook 管理。
 // 禁止在此实现筛选逻辑或直接操作存储。
 defineProps<{
-  activeSubject: string;
-  subjectMap: Record<string, number>;
-  allCount: number;
-  noneCount: number;
-}>();
+  activeSubject: string
+  subjectMap: Record<string, number>
+  allCount: number
+  noneCount: number
+}>()
 
 const emit = defineEmits<{
-  filter: [subject: string];
-  quickCreate: [subject: string];
-}>();
+  filter: [subject: string]
+  quickCreate: [subject: string]
+}>()
 </script>
 
 <template>
