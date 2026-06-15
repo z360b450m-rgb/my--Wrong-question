@@ -38,41 +38,45 @@ jobs:
           # Truncate diff if too large (keep under ~30K chars for API limit)
           DIFF_CONTENT=$(echo "$DIFF_CONTENT" | head -c 30000)
 
-          # Build JSON payload for Claude API
-          PROMPT=$(jq -nc --arg diff "$DIFF_CONTENT" '
-          "你是一个资深代码审查专家。请审查以下 Pull Request 的代码变更 (diff)。\n\n" +
-          "审查重点：\n" +
-          "1. **安全漏洞**：XSS、注入攻击、敏感信息泄露\n" +
-          "2. **逻辑错误**：边界条件、空值处理、异步问题\n" +
-          "3. **Electron 安全**：nodeIntegration、contextIsolation、IPC 通信安全\n" +
-          "4. **性能问题**：内存泄漏、不必要的重渲染、大量数据处理\n" +
-          "5. **代码质量**：可读性、可维护性、TypeScript 类型安全\n\n" +
-          "请以友好的语气，用中文给出审查意见。对每个问题指出具体的文件和行号，并给出修复建议。如果代码没有问题，请简短地给予肯定。\n\n" +
-          "不要输出任何序言或结束语，直接开始审查。\n\n" +
-          "PR Diff:\n```diff\n\($diff)\n```"
-          ')
+          # Build system + user messages
+          SYSTEM_PROMPT="你是一个资深代码审查专家。请审查以下 Pull Request 的代码变更 (diff)。
 
-          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-            -H "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
-            -d "$(jq -nc --arg prompt "$PROMPT" '{
-              model: "claude-sonnet-4-6",
-              max_tokens: 2000,
-              messages: [{role: "user", content: $prompt}]
-            }')")
+          审查重点：
+          1. **安全漏洞**：XSS、注入攻击、敏感信息泄露
+          2. **逻辑错误**：边界条件、空值处理、异步问题
+          3. **Electron 安全**：nodeIntegration、contextIsolation、IPC 通信安全
+          4. **性能问题**：内存泄漏、不必要的重渲染、大量数据处理
+          5. **代码质量**：可读性、可维护性、TypeScript 类型安全
 
-          REVIEW_TEXT=$(echo "$RESPONSE" | jq -r '.content[0].text // "AI 审查未能完成，请手动检查代码。"')
+          请以友好的语气，用中文给出审查意见。对每个问题指出具体的文件和行号，并给出修复建议。如果代码没有问题，请简短地给予肯定。
+          不要输出任何序言或结束语，直接开始审查。"
+
+          RESPONSE=$(curl -s https://api.deepseek.com/v1/chat/completions \
+            -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc \
+              --arg system "$SYSTEM_PROMPT" \
+              --arg diff "$DIFF_CONTENT" \
+              '{
+                model: "deepseek-chat",
+                max_tokens: 2000,
+                messages: [
+                  {role: "system", content: $system},
+                  {role: "user", content: "PR Diff:\n```diff\n\($diff)\n```"}
+                ]
+              }')")
+
+          REVIEW_TEXT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "AI 审查未能完成，请手动检查代码。"')
 
           # Escape for GitHub Actions output
           {
             echo "comment<<EOF"
-            echo "## AI 代码审查 (Claude)"
+            echo "## AI 代码审查 (DeepSeek)"
             echo ""
             echo "$REVIEW_TEXT"
             echo ""
             echo "---"
-            echo "*此审查由 Claude AI 自动生成 | PR #${{ github.event.pull_request.number }}*"
+            echo "*此审查由 DeepSeek AI 自动生成 | PR #${{ github.event.pull_request.number }}*"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
