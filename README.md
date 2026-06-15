@@ -7,8 +7,8 @@
 ![Stack](https://img.shields.io/badge/stack-Vue%203%20%2B%20TypeScript%20%2B%20Electron-orange)
 
 <p align="center">
-  <img src="screenshot_books.png" alt="错题本列表" width="45%" />
-  <img src="screenshot_menu.png" alt="功能菜单" width="45%" />
+  <img src="screenshot_main.png" alt="主界面 - 错题列表" width="45%" />
+  <img src="screenshot_editor.png" alt="错题编辑 - 题目与答案对比" width="45%" />
 </p>
 
 ---
