@@ -11,6 +11,10 @@ with sync_playwright() as p:
     page.locator('button:has-text("设置")').click()
     page.wait_for_timeout(500)
 
+    # Expand the review settings section (collapsed by default)
+    page.locator('button:has-text("复习设置")').click()
+    page.wait_for_timeout(300)
+
     html = page.content()
 
     # Should NOT see SM-2 mode toggle

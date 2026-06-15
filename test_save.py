@@ -11,6 +11,10 @@ with sync_playwright() as p:
     page.locator('button:has-text("设置")').click()
     page.wait_for_timeout(500)
 
+    # Expand review section
+    page.locator('button:has-text("复习设置")').click()
+    page.wait_for_timeout(300)
+
     # Change firstReviewDays from 1 to 10 (draft only)
     inputs = page.locator('input[type="number"]')
     first_input = inputs.nth(0)
@@ -43,6 +47,8 @@ with sync_playwright() as p:
     # Now open settings again, change and SAVE
     page.locator('button:has-text("设置")').click()
     page.wait_for_timeout(500)
+    page.locator('button:has-text("复习设置")').click()
+    page.wait_for_timeout(300)
 
     # Draft should reset, change to 10
     inputs = page.locator('input[type="number"]')
