@@ -47,19 +47,21 @@ let suppressInput = false
 
 const showHidden = computed(() => props.type === 'correct' && props.hidden)
 
-watch(
-  () => props.entryId,
-  () => {
-    nextTick(() => {
-      if (bodyRef.value) {
-        suppressInput = true
-        bodyRef.value.innerHTML = props.modelValue
-        suppressInput = false
-      }
-    })
-  },
-  { immediate: true },
-)
+function syncContent() {
+  nextTick(() => {
+    if (bodyRef.value) {
+      suppressInput = true
+      bodyRef.value.innerHTML = props.modelValue
+      suppressInput = false
+    }
+  })
+}
+
+watch(() => props.entryId, syncContent, { immediate: true })
+
+watch(showHidden, (hidden) => {
+  if (!hidden) syncContent()
+})
 
 function onInput() {
   if (suppressInput) return

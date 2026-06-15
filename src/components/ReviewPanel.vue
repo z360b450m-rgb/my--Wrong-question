@@ -25,7 +25,7 @@ const emit = defineEmits<{
   startReview: [force: boolean]
   exitReview: []
   dismissSummary: []
-  'mount-canvas': [el: HTMLElement]
+  'mount-canvas': [el: HTMLElement, entryId: string]
 }>()
 
 const showCorrect = ref(false)
@@ -85,8 +85,8 @@ watch(() => props.entry, () => {
   showCorrect.value = false
   note.value = ''
   nextTick(() => {
-    if (questionContentRef.value) {
-      emit('mount-canvas', questionContentRef.value)
+    if (questionContentRef.value && props.entry?.id) {
+      emit('mount-canvas', questionContentRef.value, props.entry.id)
     }
   })
 }, { immediate: true })

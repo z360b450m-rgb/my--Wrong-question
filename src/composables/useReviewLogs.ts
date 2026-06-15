@@ -8,17 +8,14 @@ function genId(): string {
 
 // Module-scoped singleton — shared by useReview and useStats
 const reviewLogs = ref<ReviewLog[]>([])
-let loaded = false
 
 export function useReviewLogs() {
   async function loadLogs() {
-    if (loaded) return
     try {
       reviewLogs.value = await db.getAllReviewLogs()
     } catch {
       reviewLogs.value = []
     }
-    loaded = true
   }
 
   async function addLog(entryId: string, quality: number | string) {

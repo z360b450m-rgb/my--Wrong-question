@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import ImageCropper from './ImageCropper.vue'
 
 const emit = defineEmits<{
   capture: [dataUrl: string]
@@ -19,6 +20,10 @@ const error = ref('')
 const capturing = ref<string | null>(null)
 const video = ref<HTMLVideoElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
+
+// After capture, show cropper before emitting
+const cropMode = ref(false)
+const capturedImage = ref('')
 
 onMounted(async () => {
   try {
@@ -53,7 +58,6 @@ async function captureSource(source: Source) {
     video.value.srcObject = stream
     await video.value.play()
 
-    // Wait a frame for video to render
     await new Promise((r) => setTimeout(r, 200))
 
     const c = canvas.value!
@@ -62,17 +66,29 @@ async function captureSource(source: Source) {
     c.height = v.videoHeight
     const ctx = c.getContext('2d')!
     ctx.drawImage(v, 0, 0)
-    const dataUrl = c.toDataURL('image/png')
-    emit('capture', dataUrl)
+    capturedImage.value = c.toDataURL('image/png')
+    cropMode.value = true
 
-    // Cleanup
     stream.getTracks().forEach((t) => t.stop())
     video.value.srcObject = null
   } catch {
-    // Fallback: use thumbnail if live capture fails
-    emit('capture', source.thumbnail)
+    capturedImage.value = source.thumbnail
+    cropMode.value = true
   }
   capturing.value = null
+}
+
+function onCrop(dataUrl: string) {
+  emit('capture', dataUrl)
+}
+
+function onSkipCrop() {
+  emit('capture', capturedImage.value)
+}
+
+function onCancelCrop() {
+  cropMode.value = false
+  capturedImage.value = ''
 }
 
 onUnmounted(() => {
@@ -113,18 +129,15 @@ onUnmounted(() => {
             :class="{ 'border-accent bg-accent/10': capturing === s.id }"
             @click="captureSource(s)"
           >
-            <!-- Thumbnail -->
             <div class="w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
               <img :src="s.thumbnail" class="w-full h-full object-cover" />
             </div>
-            <!-- Loading overlay -->
             <div
               v-if="capturing === s.id"
               class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 rounded-xl flex items-center justify-center"
             >
               <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             </div>
-            <!-- Name -->
             <span class="text-[11px] text-gray-600 dark:text-gray-300 font-medium truncate w-full text-center leading-tight">
               {{ s.name }}
             </span>
@@ -136,4 +149,12 @@ onUnmounted(() => {
     <video ref="video" class="hidden" />
     <canvas ref="canvas" class="hidden" />
   </div>
+
+  <ImageCropper
+    v-if="cropMode"
+    :image-src="capturedImage"
+    @crop="onCrop"
+    @skip="onSkipCrop"
+    @cancel="onCancelCrop"
+  />
 </template>

@@ -1,9 +1,9 @@
-import { ref, computed, onUnmounted, watch } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
 import { db } from '@/services/db'
 import { useReviewSettings } from '@/composables/useReviewSettings'
 import { useNotebooks } from '@/composables/useNotebooks'
-import { intervalForLevel } from '@/composables/useReview'
+
 
 // IndexedDB can't store Vue Proxy objects (structured clone error)
 function toPlain<T>(obj: T): T {
@@ -51,32 +51,6 @@ export function useEntries() {
       ? entries.value.filter((e) => e.notebookId === notebookId.value)
       : entries.value,
   )
-
-  // Snapshot of interval-related settings for reactivity
-  const intervalCfg = computed(() => ({
-    first: settings.value.firstReviewDays,
-    unm: settings.value.unmasteredDays,
-    mas: settings.value.masteredDays,
-    gf: settings.value.growthFactor,
-    max: settings.value.maxInterval,
-  }))
-
-  let recalcTimer: ReturnType<typeof setTimeout> | null = null
-  watch(intervalCfg, (cfg) => {
-    if (entries.value.length === 0) return
-    if (recalcTimer) clearTimeout(recalcTimer)
-    recalcTimer = setTimeout(async () => {
-      const now = Date.now()
-      for (const entry of entries.value) {
-        const passes = entry.consecutivePasses ?? 0
-        const interval = intervalForLevel(passes, entry, cfg.first, cfg.mas, cfg.gf, cfg.max)
-        entry.interval = interval
-        entry.nextReviewDate = now + interval * 86400000
-        entry.updatedAt = now
-        await db.put(toPlain(entry))
-      }
-    }, 600)
-  })
 
   const activeEntry = computed<NoteEntry | undefined>(() =>
     entries.value.find((e) => e.id === activeId.value),

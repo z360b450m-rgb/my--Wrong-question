@@ -26,11 +26,36 @@ function getDataDir() {
   return dataDir;
 }
 
+function readConfig() {
+  const configPath = path.join(app.getPath('userData'), 'config.json');
+  try {
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    }
+  } catch { /* ignore */ }
+  return {};
+}
+
 function saveConfig() {
   const configPath = path.join(app.getPath('userData'), 'config.json');
   const dir = path.dirname(configPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify({ dataDir }, null, 2), 'utf-8');
+  const cfg = readConfig();
+  cfg.dataDir = dataDir;
+  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8');
+}
+
+function isIndexedDBMigrated() {
+  return readConfig().indexedDBMigrated === true;
+}
+
+function markIndexedDBMigrated() {
+  const configPath = path.join(app.getPath('userData'), 'config.json');
+  const cfg = readConfig();
+  cfg.indexedDBMigrated = true;
+  const dir = path.dirname(configPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8');
 }
 
 function getDataFilePath() {
@@ -77,6 +102,16 @@ ipcMain.handle('desktop:getSources', async () => {
     thumbnail: s.thumbnail.toDataURL(),
     appIcon: s.appIcon ? s.appIcon.toDataURL() : null,
   }));
+});
+
+// ── Migration ─────────────────────────────────────────────────────
+
+ipcMain.handle('storage:isIndexedDBMigrated', () => {
+  return isIndexedDBMigrated();
+});
+
+ipcMain.handle('storage:markIndexedDBMigrated', () => {
+  markIndexedDBMigrated();
 });
 
 ipcMain.handle('storage:getAll', () => {
@@ -233,6 +268,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: '错题本',
+    show: false,
     icon: path.join(__dirname, '..', 'dist', 'icon-512.png'),
     webPreferences: {
       nodeIntegration: false,
@@ -242,6 +278,10 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 
   Menu.setApplicationMenu(null);
 

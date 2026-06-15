@@ -27,6 +27,8 @@ export interface DrawingState {
   loadDrawing: (entryId: string) => void
   mountCanvas: (container: HTMLElement) => void
   setCanvasParent: (el: HTMLElement | null) => void
+  captureDrawing: () => string | null
+  setStoredDrawing: (entryId: string, dataUrl: string) => void
 }
 
 export function useDrawing(): DrawingState {
@@ -69,8 +71,11 @@ export function useDrawing(): DrawingState {
       if (!canvas || !ctx) { resolve(); return }
       const img = new Image()
       img.onload = () => {
+        ctx!.save()
+        ctx!.setTransform(1, 0, 0, 1, 0, 0)
         ctx!.clearRect(0, 0, canvas!.width, canvas!.height)
         ctx!.drawImage(img, 0, 0)
+        ctx!.restore()
         resolve()
       }
       img.onerror = () => resolve()
@@ -116,7 +121,7 @@ export function useDrawing(): DrawingState {
       canvas.height = physicalHeight
       canvas.style.width = `${w}px`
       canvas.style.height = `${h}px`
-      ctx.scale(dpr, dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       ctx.save()
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -214,7 +219,7 @@ export function useDrawing(): DrawingState {
     canvas.style.position = 'absolute'
     canvas.style.top = '0'
     canvas.style.left = '0'
-    canvas.style.pointerEvents = 'none'
+    canvas.style.pointerEvents = drawingEnabled.value ? 'auto' : 'none'
     canvas.style.zIndex = '10'
     ctx = canvas.getContext('2d')
 
@@ -290,6 +295,15 @@ export function useDrawing(): DrawingState {
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr)
   }
 
+  function captureDrawing(): string | null {
+    if (!canvas || canvas.width === 0 || canvas.height === 0) return null
+    return canvas.toDataURL()
+  }
+
+  function setStoredDrawing(entryId: string, dataUrl: string) {
+    drawingStore.set(entryId, dataUrl)
+  }
+
   function toggleDrawing() {
     drawingEnabled.value = !drawingEnabled.value
     if (!drawingEnabled.value && canvas) {
@@ -339,5 +353,7 @@ export function useDrawing(): DrawingState {
     loadDrawing,
     mountCanvas,
     setCanvasParent,
+    captureDrawing,
+    setStoredDrawing,
   }
 }

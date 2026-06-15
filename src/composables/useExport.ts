@@ -59,7 +59,7 @@ ${items
   .map(
     (e) => `
 <div class="card">
-  <div class="card-title">${e.source || ''} ${e.tags.length > 0 ? '· ' + e.tags.join(', ') : ''}</div>
+  <div class="card-title">${e.source || ''} ${(e.tags && e.tags.length > 0) ? '· ' + e.tags.join(', ') : ''}</div>
   <div class="question">${e.question || '(无题目)'}</div>
   ${e.wrongAnswer ? `<div class="answer-label">我的答案</div><div class="wrong">${e.wrongAnswer}</div>` : ''}
   ${e.wrongAnswer && e.correctAnswer ? '<hr>' : ''}
@@ -80,11 +80,10 @@ ${items
     w.document.write(html)
     w.document.close()
     w.onload = () => {
-      w.print()
+      setTimeout(() => {
+        w.print()
+      }, 500)
     }
-    setTimeout(() => {
-      w.print()
-    }, 300)
   }
 
   return { exportPDF }

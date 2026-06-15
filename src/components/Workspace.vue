@@ -108,7 +108,7 @@ const emit = defineEmits<{
   'clear-canvas': []
   undo: []
   redo: []
-  'mount-canvas': [el: HTMLElement | null]
+  'mount-canvas': [el: HTMLElement | null, entryId: string]
 
   // Batch
   'toggle-select': [id: string]
@@ -145,6 +145,10 @@ let lastWheelNav = 0
 
 function onWheel(e: WheelEvent) {
   if (props.mode !== 'edit' || !props.activeId) return
+
+  // Only allow wheel navigation from answer panels, not question area
+  const inAnswer = (e.target as HTMLElement).closest('.answer-panel')
+  if (!inAnswer) return
 
   const scrollable = (e.target as HTMLElement).closest('.overflow-y-auto')
   if (scrollable) {
@@ -198,6 +202,7 @@ function onWheel(e: WheelEvent) {
       @batch-delete="emit('batch-delete')"
       @batch-tag="tags => emit('batch-tag', tags)"
       @batch-export="emit('batch-export')"
+      @toggle-settings="emit('toggle-settings')"
     />
 
     <main class="flex-1 flex flex-col min-w-0">
@@ -236,7 +241,7 @@ function onWheel(e: WheelEvent) {
           @update="emit('mark-dirty')"
           @blur-save="emit('blur-save')"
           @reveal="emit('reveal')"
-          @mount-canvas="el => emit('mount-canvas', el)"
+          @mount-canvas="(el, entryId) => emit('mount-canvas', el, entryId)"
         />
 
         <ReviewPanel
@@ -258,7 +263,7 @@ function onWheel(e: WheelEvent) {
           @start-review="(force: boolean) => emit('start-review', force)"
           @exit-review="emit('exit-review')"
           @dismiss-summary="emit('dismiss-summary')"
-          @mount-canvas="el => emit('mount-canvas', el)"
+          @mount-canvas="(el, entryId) => emit('mount-canvas', el, entryId)"
         />
 
         <div v-else class="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-50/50 dark:bg-gray-900/50">
@@ -405,15 +410,5 @@ function onWheel(e: WheelEvent) {
       />
     </Transition>
 
-    <!-- Settings button (bottom-left) -->
-    <button
-      class="fixed bottom-6 left-6 z-50 flex items-center justify-center w-10 h-10 rounded-full shadow-lg border-2 border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:scale-110 active:scale-90 transition-all duration-200 ease-out"
-      title="设置"
-      @click="emit('toggle-settings')"
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
   </div>
 </template>

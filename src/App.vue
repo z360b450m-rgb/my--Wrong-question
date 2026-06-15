@@ -94,7 +94,8 @@ const {
   rateCard,
   exitReview,
   dismissSummary,
-} = useReview(notebookEntries)
+  loadLogs,
+} = useReview(notebookEntries, showToast)
 
 const { settings } = useReviewSettings()
 
@@ -114,9 +115,16 @@ const {
   loadDrawing,
   mountCanvas,
   setCanvasParent,
+  captureDrawing,
+  setStoredDrawing,
 } = useDrawing()
 
-const { exportJSON, importJSON } = useBackup(notebookEntries, showToast)
+const { exportJSON, importJSON } = useBackup(
+  () => notebookEntries.value,
+  () => activeNotebookId.value ?? '',
+  loadEntries,
+  showToast,
+)
 const { exportPDF } = useExport(showToast)
 const { isDark, toggleDark } = useDarkMode()
 
@@ -130,17 +138,20 @@ const showUnsavedModal = ref(false)
 const pendingEntryId = ref<string | null>(null)
 const pendingAction = ref<'select' | 'create' | 'review' | null>(null)
 const pendingSubject = ref<string>('')
+const pendingForceReview = ref(false)
 
 async function handleEnterNotebook(id: string) {
   selectNotebook(id)
   showNotebookMenu.value = false
   await loadEntries()
+  await loadLogs()
 }
 
 async function handleCreatedNotebook(id: string) {
   selectNotebook(id)
   showNotebookMenu.value = false
   await loadEntries()
+  await loadLogs()
 }
 
 function handleReturnToMenu() {
@@ -156,6 +167,7 @@ onMounted(async () => {
   const migrated = await migrateFromIndexedDB()
   if (migrated > 0) {
     await loadEntries()
+    await loadLogs()
     showToast(`已迁移 ${migrated} 条错题到本地文件`)
   }
 
@@ -171,11 +183,13 @@ onMounted(async () => {
     selectNotebook(lastId)
     showNotebookMenu.value = false
     await loadEntries()
+    await loadLogs()
   }
 })
 
 // Crash protection: save snapshot before unload
 function onBeforeUnload() {
+  syncDrawingToEntry()
   snapshotSave()
 }
 onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
@@ -188,7 +202,7 @@ provide('resizeCanvas', resizeCanvas)
 
 useKeyboard({
   onCreate: () => handleCreate(),
-  onSave: () => { if (activeId.value) saveEntry() },
+  onSave: () => { if (activeId.value) handleSave() },
   onToggleReveal: () => {
     if (mode.value === 'review') {
       if (!answered.value) revealAnswer()
@@ -280,7 +294,7 @@ function handleBatchExport() {
 }
 
 function handleExportPDF() {
-  exportPDF(entries.value)
+  exportPDF(notebookEntries.value)
 }
 
 async function handleChangeDataDir() {
@@ -309,14 +323,47 @@ function handleStartReview(force = false) {
     showToast('今日复习已完成')
     return
   }
+  pendingForceReview.value = force
   checkDirtyThen(
     () => { startReview(force) },
     'review',
   )
 }
 
+function handleMountCanvas(el: HTMLElement, entryId: string) {
+  mountCanvas(el)
+  // Pre-populate store from persisted drawing data
+  const entry = entries.value.find(e => e.id === entryId)
+  if (entry?.drawing) {
+    setStoredDrawing(entryId, entry.drawing)
+  }
+  loadDrawing(entryId)
+}
+
+function syncDrawingToEntry() {
+  if (!activeId.value) return
+  const entry = entries.value.find(e => e.id === activeId.value)
+  if (!entry) return
+  const dataUrl = captureDrawing()
+  if (dataUrl) {
+    entry.drawing = dataUrl
+  } else {
+    delete entry.drawing
+  }
+}
+
+async function handleSave() {
+  syncDrawingToEntry()
+  await saveEntry()
+}
+
+function handleBlurSave() {
+  syncDrawingToEntry()
+  snapshotSave()
+}
+
 function doStartReview() {
-  startReview(false)
+  startReview(pendingForceReview.value)
 }
 
 function handleExitReview() {
@@ -325,7 +372,7 @@ function handleExitReview() {
 
 // Unsaved modal handlers
 async function handleSaveAndProceed() {
-  await saveEntry()
+  await handleSave()
   proceedAfterSave()
 }
 
@@ -362,9 +409,10 @@ const canGoPrev = computed(() => navIdx.value > 0)
 const canGoNext = computed(() => navIdx.value < filteredIds.value.length - 1 && navIdx.value >= 0)
 
 loadEntries()
+loadLogs()
 
 watch(activeId, (newId) => {
-  if (newId) loadDrawing(newId)
+  // loadDrawing is called from handleMountCanvas after the canvas is ready
 })
 </script>
 
@@ -432,9 +480,9 @@ watch(activeId, (newId) => {
     @reorder="reorderEntries"
     @quick-create="handleCreate"
     @rename="updateEntryTitle"
-    @save="saveEntry"
+    @save="handleSave"
     @mark-dirty="markDirty"
-    @blur-save="snapshotSave"
+    @blur-save="handleBlurSave"
     @delete="handleDelete"
     @confirm-delete="handleConfirmDelete"
     @close-delete-modal="closeDeleteModal"
@@ -453,7 +501,7 @@ watch(activeId, (newId) => {
     @undo="undo"
     @redo="redo"
     @clear-canvas="clearCanvas"
-    @mount-canvas="(el: HTMLElement) => mountCanvas(el)"
+    @mount-canvas="(el: HTMLElement, entryId: string) => handleMountCanvas(el, entryId)"
     @toggle-select="toggleSelect"
     @range-select="(ids: string[], from: number, to: number) => selectRange(ids, from, to)"
     @select-all="selectAll"

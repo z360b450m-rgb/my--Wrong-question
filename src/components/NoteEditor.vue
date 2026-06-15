@@ -15,7 +15,7 @@ const emit = defineEmits<{
   update: []
   reveal: []
   'blur-save': []
-  'mount-canvas': [el: HTMLElement]
+  'mount-canvas': [el: HTMLElement, entryId: string]
 }>()
 
 function onBlur() {
@@ -179,21 +179,20 @@ const entryLogs = computed(() =>
     .sort((a, b) => a.timestamp - b.timestamp),
 )
 
-function qualityNum(q: number | string): number {
-  return typeof q === 'number' ? q : Number(q)
-}
-
-const QUALITY_DEFS: Record<number, { label: string; color: string }> = {
+const QUALITY_DEFS: Record<number | string, { label: string; color: string }> = {
   0: { label: '遗忘', color: '#ef4444' },
   1: { label: '错误', color: '#f97316' },
   2: { label: '勉强', color: '#f59e0b' },
   3: { label: '困难', color: '#eab308' },
   4: { label: '犹豫', color: '#84cc16' },
   5: { label: '完美', color: '#22c55e' },
+  forgot: { label: '遗忘', color: '#ef4444' },
+  unfamiliar: { label: '不熟练', color: '#f59e0b' },
+  mastered: { label: '掌握', color: '#22c55e' },
 }
 
 function qualityInfo(q: number | string) {
-  return QUALITY_DEFS[qualityNum(q)] ?? { label: String(q), color: '#9ca3af' }
+  return QUALITY_DEFS[q] ?? { label: String(q), color: '#9ca3af' }
 }
 
 function fmtDate(ts: number): string {
@@ -212,7 +211,7 @@ watch(
         suppressInput = false
       }
       if (questionContentRef.value) {
-        emit('mount-canvas', questionContentRef.value)
+        emit('mount-canvas', questionContentRef.value, props.entry.id)
       }
     })
   },
@@ -391,8 +390,8 @@ onUnmounted(() => {
     </div>
 
     <!-- Question panel -->
-    <div
-      ref="questionPanelEl"
+      <div
+        ref="questionPanelEl"
       class="flex-shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden group"
       style="height: 35%"
     >

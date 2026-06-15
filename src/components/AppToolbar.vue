@@ -26,9 +26,9 @@ const emit = defineEmits<{
   toggleMode: []
   toggleDrawing: []
   toggleStats: []
-  exportJSON: []
-  exportPDF: []
-  importJSON: []
+  'export-json': []
+  'export-pdf': []
+  'import-json': []
 }>()
 
 const moreMenuOpen = ref(false)
@@ -51,9 +51,9 @@ onUnmounted(() => {
 })
 
 function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'delete') {
-  if (action === 'export-json') emit('exportJSON')
-  else if (action === 'export-pdf') emit('exportPDF')
-  else if (action === 'import') emit('importJSON')
+  if (action === 'export-json') emit('export-json')
+  else if (action === 'export-pdf') emit('export-pdf')
+  else if (action === 'import') emit('import-json')
   else if (action === 'delete') emit('delete')
   moreMenuOpen.value = false
 }

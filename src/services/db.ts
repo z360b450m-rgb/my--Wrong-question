@@ -201,15 +201,31 @@ export const db = isElectron() ? fileDb : idbDb
 
 export async function migrateFromIndexedDB(): Promise<number> {
   if (!isElectron()) return 0
+
+  // If migration was already done, skip entirely — no IDB open needed
+  try {
+    const alreadyMigrated = await window.electronAPI!.isIndexedDBMigrated()
+    if (alreadyMigrated) return 0
+  } catch { /* proceed */ }
+
   const existing = await fileDb.getAll()
-  if (existing.length > 0) return 0 // Already has file data, skip
+  if (existing.length > 0) {
+    // Already has file data — mark migrated so future starts skip IDB
+    try { await window.electronAPI!.markIndexedDBMigrated() } catch { /* ignore */ }
+    return 0
+  }
 
   try {
     const idbEntries = await idbDb.getAll()
-    if (idbEntries.length === 0) return 0
+    if (idbEntries.length === 0) {
+      // No IDB data either — mark migrated so future starts skip IDB
+      try { await window.electronAPI!.markIndexedDBMigrated() } catch { /* ignore */ }
+      return 0
+    }
     for (const entry of idbEntries) {
       await fileDb.put(entry)
     }
+    try { await window.electronAPI!.markIndexedDBMigrated() } catch { /* ignore */ }
     return idbEntries.length
   } catch {
     return 0

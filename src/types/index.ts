@@ -29,6 +29,8 @@ export interface NoteEntry {
   interval?: number
   lastReviewDate?: number
   nextReviewDate?: number
+  // Canvas drawing (data URL)
+  drawing?: string
 }
 
 export interface ReviewLog {

@@ -1,4 +1,4 @@
-import { ref, computed, onUnmounted, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, watch, onUnmounted, type Ref, type ComputedRef } from 'vue'
 import type { NoteEntry } from '@/types'
 import { db } from '@/services/db'
 import { useReviewLogs } from '@/composables/useReviewLogs'
@@ -25,9 +25,8 @@ function isToday(ts: number): boolean {
 
 export function intervalForLevel(passes: number, entry: NoteEntry, firstReviewDays: number, masteredDays: number, growthFactor: number, maxInterval: number): number {
   if (passes === 0) return firstReviewDays
-  if (passes === 1) return firstReviewDays
-  if (passes === 2) return masteredDays
-  if (passes === 3) return Math.round(masteredDays * growthFactor)
+  if (passes === 1) return masteredDays
+  if (passes === 2) return Math.round(masteredDays * growthFactor)
   return Math.min(Math.round((entry.interval ?? masteredDays) * growthFactor), maxInterval)
 }
 
@@ -49,9 +48,13 @@ function applyCustom(
     entry.masteryLevel = 0
     entry.easeFactor = 1.3
   } else if (rating === 'unfamiliar') {
-    entry.consecutivePasses = passes
-    entry.masteryLevel = Math.min(passes, 4)
-    entry.interval = intervalForLevel(passes, entry, firstReviewDays, masteredDays, growthFactor, maxInterval)
+    if (passes === 0) {
+      entry.consecutivePasses = 0
+      entry.masteryLevel = 0
+      entry.interval = unmasteredDays
+    } else {
+      entry.interval = intervalForLevel(passes, entry, firstReviewDays, masteredDays, growthFactor, maxInterval)
+    }
     entry.easeFactor = 1.8
   } else {
     entry.consecutivePasses = passes + 1
@@ -85,6 +88,7 @@ export interface ReviewState {
   rateCard: (rating: number | string, note?: string) => Promise<void>
   exitReview: () => void
   dismissSummary: () => void
+  loadLogs: () => Promise<void>
 }
 
 export interface SessionRecord {
@@ -95,6 +99,7 @@ export interface SessionRecord {
 
 export function useReview(
   entries: Ref<NoteEntry[]>,
+  showToast?: (msg: string) => void,
 ): ReviewState {
   const mode = ref<'edit' | 'review'>('edit')
   const reviewIndex = ref(0)
@@ -102,12 +107,29 @@ export function useReview(
   const forceAll = ref(false)
   const cardStartTime = ref(0)
   const elapsedMs = ref(0)
+  const now = ref(Date.now())
   let timerInterval: ReturnType<typeof setInterval> | null = null
+  let clockInterval: ReturnType<typeof setInterval> | null = null
 
   const { addLog, loadLogs } = useReviewLogs()
   loadLogs()
 
   const { settings } = useReviewSettings()
+
+  // When settings change, recalculate nextReviewDate for all entries
+  watch(settings, () => {
+    const s = settings.value
+    entries.value.forEach((entry) => {
+      if (!entry.lastReviewDate) return
+      const passes = entry.consecutivePasses ?? 0
+      const interval =
+        passes === 0
+          ? s.unmasteredDays
+          : intervalForLevel(passes, entry, s.firstReviewDays, s.masteredDays, s.growthFactor, s.maxInterval)
+      entry.interval = interval
+      entry.nextReviewDate = entry.lastReviewDate + interval * 86400000
+    })
+  }, { deep: true })
 
   const sessionDone = ref(false)
   const sessionRecords = ref<SessionRecord[]>([])
@@ -133,12 +155,19 @@ export function useReview(
     elapsedMs.value = Date.now() - cardStartTime.value
   }
 
+  // Keep due-count reactive to wall-clock time (e.g., midnight rollover)
+  clockInterval = setInterval(() => {
+    now.value = Date.now()
+  }, 30_000)
+
   onUnmounted(() => {
     if (timerInterval) clearInterval(timerInterval)
+    if (clockInterval) clearInterval(clockInterval)
   })
 
   const dueEntries = computed(() =>
     entries.value.filter((e) => {
+      void now.value // trigger recompute on clock tick (midnight rollover)
       const next = e.nextReviewDate
       return next === undefined || next === 0 || next <= Date.now()
     }),
@@ -206,8 +235,14 @@ export function useReview(
     }
 
     applyCustom(entry, rating as string, settings.value.firstReviewDays, settings.value.unmasteredDays, settings.value.masteredDays, settings.value.growthFactor, settings.value.maxInterval)
-    await db.put(JSON.parse(JSON.stringify(entry)))
-    await addLog(entry.id, rating)
+    try {
+      await db.put(JSON.parse(JSON.stringify(entry)))
+      await addLog(entry.id, rating)
+    } catch (err) {
+      console.error('Failed to save review result', err)
+      showToast?.('保存复习记录失败，请重试')
+      return
+    }
 
     sessionRecords.value.push({
       entryId: entry.id,
@@ -258,5 +293,6 @@ export function useReview(
     rateCard,
     exitReview,
     dismissSummary,
+    loadLogs,
   }
 }

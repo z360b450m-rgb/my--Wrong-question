@@ -20,15 +20,25 @@ function timestamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`
 }
 
-export function useBackup(entries: { value: NoteEntry[] }, onToast: (msg: string) => void) {
+function genId(): string {
+  return 'cuoti_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+}
+
+export function useBackup(
+  getEntries: () => NoteEntry[],
+  getNotebookId: () => string,
+  reload: () => Promise<void>,
+  onToast: (msg: string) => void,
+) {
   function exportJSON() {
-    if (entries.value.length === 0) {
+    const entries = getEntries()
+    if (entries.length === 0) {
       onToast('暂无错题可导出')
       return
     }
-    const json = JSON.stringify(entries.value, null, 2)
+    const json = JSON.stringify(entries, null, 2)
     downloadFile(json, `错题本_${timestamp()}.json`, 'application/json')
-    onToast(`已导出 ${entries.value.length} 条错题`)
+    onToast(`已导出 ${entries.length} 条错题`)
   }
 
   function importJSON() {
@@ -57,18 +67,25 @@ export function useBackup(entries: { value: NoteEntry[] }, onToast: (msg: string
             skipped++
             continue
           }
-          const existing = await db.get(item.id)
-          if (existing) {
-            skipped++
-            continue
+          const sanitized: NoteEntry = {
+            ...item,
+            id: genId(),
+            notebookId: getNotebookId() || item.notebookId || '',
+            tags: Array.isArray(item.tags) ? item.tags : [],
+            subject: item.subject || '',
+            source: item.source || '',
+            wrongAnswer: item.wrongAnswer || '',
+            correctAnswer: item.correctAnswer || '',
+            masteryLevel: item.masteryLevel || 0,
+            consecutivePasses: item.consecutivePasses || 0,
+            createdAt: item.createdAt || Date.now(),
+            updatedAt: item.updatedAt || Date.now(),
           }
-          await db.put(item as NoteEntry)
+          await db.put(sanitized)
           imported++
         }
 
-        // Reload entries from DB
-        const all = await db.getAll()
-        entries.value = all
+        await reload()
 
         if (imported === 0 && skipped === 0) {
           onToast('导入失败：未识别到有效错题数据')

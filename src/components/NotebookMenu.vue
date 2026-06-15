@@ -13,7 +13,8 @@ const emit = defineEmits<{
 
 const { isDark } = useDarkMode()
 const { notebooks, createNotebook, updateNotebook, deleteNotebook, reorderNotebooks } = useNotebooks()
-const { entries } = useEntries()
+const { entries, loadEntries } = useEntries()
+loadEntries()
 const { reviewLogs, loadLogs } = useReviewLogs()
 loadLogs()
 

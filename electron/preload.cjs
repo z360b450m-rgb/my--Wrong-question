@@ -29,6 +29,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Desktop capture
   getDesktopSources: () => ipcRenderer.invoke('desktop:getSources'),
 
+  // Migration
+  isIndexedDBMigrated: () => ipcRenderer.invoke('storage:isIndexedDBMigrated'),
+  markIndexedDBMigrated: () => ipcRenderer.invoke('storage:markIndexedDBMigrated'),
+
   // Notebook API
   getAllNotebooks: () => ipcRenderer.invoke('storage:getAllNotebooks'),
   putNotebook: (notebook) => ipcRenderer.invoke('storage:putNotebook', notebook),
