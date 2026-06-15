@@ -8,7 +8,17 @@ import globals from 'globals'
 export default [
   // Global ignores
   {
-    ignores: ['dist/**', 'dist-electron/**', 'node_modules/**', '*.min.js', '*.min.css'],
+    ignores: [
+      'dist/**',
+      'dist-electron/**',
+      'node_modules/**',
+      'public/**',
+      '.vscode/**',
+      '.vs/**',
+      '*.min.js',
+      '*.min.css',
+      '**/*.d.ts',
+    ],
   },
 
   // ===== Browser TypeScript (src/*.ts, no .vue) =====
