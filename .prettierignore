@@ -9,6 +9,4 @@ public
 pnpm-lock.yaml
 package-lock.json
 .vs
-debug.png
-screenshot_*.png
 *.png
