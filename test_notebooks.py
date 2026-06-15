@@ -40,18 +40,26 @@ with sync_playwright() as p:
 
     html3 = page.content()
     if 'Test Book' in html3:
-        print("PASS: Entered notebook, name shown in sidebar")
+        print("PASS: Notebook created, visible in menu list")
+
+    # Enter the notebook (click the notebook card in menu)
+    page.locator('button:has-text("Test Book")').first.click()
+    page.wait_for_timeout(2000)
+
+    html4 = page.content()
+    if '返回' in html4:
+        print("PASS: Entered notebook, back button visible")
     else:
-        print("FAIL: Not in notebook view")
+        print("FAIL: Back button not found after entering notebook")
 
     # Return to menu
     page.locator('button:has-text("返回")').first.click()
     page.wait_for_timeout(500)
 
-    html4 = page.content()
-    if 'Test Book' in html4:
-        print("PASS: Notebook card visible in menu")
+    html5 = page.content()
+    if 'Test Book' in html5:
+        print("PASS: Back in menu, notebook card still visible")
     else:
-        print("FAIL: Notebook not in menu list")
+        print("FAIL: Notebook not in menu list after return")
 
     browser.close()
