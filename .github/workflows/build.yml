@@ -37,6 +37,7 @@ jobs:
         run: npm run build
 
       - name: Upload build artifacts
+        # Run even on failure — partial artifacts help debug build/lint errors without re-running locally.
         if: always()
         uses: actions/upload-artifact@v4
         with:
