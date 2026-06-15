@@ -1,3 +1,35 @@
+// ===================================================================
+// @AI-ENVIRONMENT-RULES: Electron 主进程 (Node.js 环境)
+//
+// 本文件运行在 Node.js 主进程, 拥有完整的系统权限 (文件 I/O、
+// 系统对话框、进程管理)。这是安全敏感级别最高的代码层。
+//
+// ■ 环境约束：
+//   1. 不存在 window / document / localStorage 等浏览器 API。
+//   2. 所有数据持久化通过 fs 模块操作 JSON 文件实现。
+//   3. 与渲染进程的唯一通信通道是 ipcMain.handle / ipcMain.on。
+//
+// ■ 安全边界 (CRITICAL)：
+//   1. 任何新增的 ipcMain.handle 必须同步在 preload.cjs 中通过
+//      contextBridge.exposeInMainWorld 暴露给渲染进程。
+//   2. 绝不能直接在渲染进程中 require('electron') 或 require
+//      Node.js 核心模块 (fs, path, child_process 等)。
+//   3. 新增 IPC 通道名称必须有明确的命名空间前缀
+//      (storage:/ desktop:/ 等)。
+//   4. 文件路径必须校验, 防止路径遍历攻击。
+//
+// ■ 数据完整性：
+//   1. 修改文件存储格式 (JSON 结构) 前必须确认 src/types/index.ts
+//      中的接口定义已同步更新。
+//   2. 原子写入：先写 .tmp 文件再 rename, 防止写入中断导致数据损坏。
+//   3. 级联删除：删除 Notebook 时必须同步删除其关联 entries、
+//      snapshots、reviewLogs。
+//
+// ■ 修改前必读文件：
+//   - electron/preload.cjs (API 桥接层)
+//   - src/types/index.ts (数据结构定义)
+//   - src/services/db.ts (渲染进程数据库访问层)
+// ===================================================================
 const { app, BrowserWindow, Menu, ipcMain, dialog, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');

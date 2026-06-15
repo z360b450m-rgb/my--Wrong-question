@@ -36,6 +36,12 @@ function nextPlaceholderTitle(entries: NoteEntry[]): string {
   return '无题目 (' + (max + 1) + ')'
 }
 
+// ===================================================================
+// @AI-GUIDE: 条目 CRUD 与状态管理层
+// 纯业务逻辑。禁止在此直接操作 DOM。条目创建/保存/删除/批量操作
+// 均在此实现，Vue 组件通过调用本 Hook 的返回值来驱动视图。
+// 返回值类型签名必须向后兼容 —— 只能追加, 不可删除或重命名字段。
+// ===================================================================
 export function useEntries() {
   const entries = ref<NoteEntry[]>([])
   const activeId = ref<string | null>(null)

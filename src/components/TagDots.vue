@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 标签筛选组件 —— 筛选状态由 useFilter Hook 管理。
+// 禁止在此实现筛选逻辑或直接操作存储。
 defineProps<{
   activeTag: string | null
   tagMap: Record<string, number>
@@ -10,6 +12,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="sidebar-section mb-3.5">
     <h3 class="text-[12px] uppercase tracking-[0.7px] text-gray-500 dark:text-gray-400 mb-1.5 font-semibold">
       标签

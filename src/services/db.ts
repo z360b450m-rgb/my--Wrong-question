@@ -1,3 +1,34 @@
+// ===================================================================
+// @AI-CRITICAL-RULES: 核心数据库访问层
+//
+// 本文件实现了系统的持久化数据访问逻辑，是唯一允许直接操作存储的模块。
+// 采用双后端架构：Electron 文件存储（主） + IndexedDB（浏览器后备）。
+//
+// ■ 绝对禁止的操作：
+//   1. 修改 STORE / SNAP_STORE / REVIEW_LOG_STORE / NOTEBOOK_STORE 的
+//      名称或结构 —— 这等同于数据库迁移，会导致已有数据不可访问。
+//   2. 修改 DB_VERSION —— 除非你明确知道如何编写 onupgradeneeded 迁移
+//      逻辑，且同步更新 Electron 端文件格式。
+//   3. 在 IndexedDB 的 onupgradeneeded 中删除或修改已有 Object Store
+//      的 schema —— 只能通过新建 Store 或追加索引来扩展。
+//   4. 绕过 db 统一导出直接调用 fileDb 或 idbDb —— 所有数据操作必须
+//      通过 db 对象进行。
+//
+// ■ 允许的扩展方式：
+//   1. 新增 Object Store：在 DB_VERSION 递增后，于 onupgradeneeded 中
+//      添加 createObjectStore；同步在 Electron main.cjs 文件存储中
+//      添加对应的 JSON 键和 CRUD 操作。
+//   2. 为已有 Store 追加新索引（不影响现有数据）。
+//   3. 追加新的数据访问函数（如 getByIndex），不可改变现有函数签名。
+//
+// ■ 修改前必读文件：
+//   - src/types/index.ts（数据接口定义 —— 两者必须保持同步）
+//   - electron/main.cjs（Electron 端文件存储实现 & IPC 处理程序）
+//   - electron/preload.cjs（暴露给渲染进程的 API 桥接）
+//
+// VIOLATION OF THESE RULES WILL CAUSE DATA CORRUPTION.
+// ===================================================================
+
 import type { NoteEntry, ReviewLog, Notebook } from '@/types'
 
 const STORE = 'entries'

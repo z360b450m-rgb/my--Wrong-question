@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 编辑器组件 —— 数据读写通过 useEntries/useDrawing Hook。
+// 禁止直接操作数据库、实现 SRS 算法、管理条目生命周期。
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject, type Ref } from 'vue'
 import type { NoteEntry } from '@/types'
 import { useReviewLogs } from '@/composables/useReviewLogs'
@@ -315,6 +317,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="flex-1 flex flex-col overflow-hidden p-4 gap-3">
     <!-- Meta row -->
     <div class="flex items-center gap-2.5 px-1 flex-wrap">

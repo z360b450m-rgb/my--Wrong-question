@@ -61,6 +61,12 @@ export interface StatsState {
   masteryBuckets: ComputedRef<{ label: string; count: number; pct: number; color: string }[]>
 }
 
+// ===================================================================
+// @AI-GUIDE: 统计数据计算层
+// 纯业务逻辑。掌握度分布、学科统计、7 日活动图表数据均在此计算。
+// MASTERY_LEVEL_DEFS 为模块级常量, 被 useFilter 等引用。
+// StatsState 返回值类型必须向后兼容。
+// ===================================================================
 export function useStats(entries: Ref<NoteEntry[]>): StatsState {
   const { reviewLogs, loadLogs } = useReviewLogs()
   loadLogs()

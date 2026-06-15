@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 未保存确认对话框 —— 纯 UI 组件。保存/丢弃/取消逻辑
+// 由父组件通过 emit 事件驱动。
 defineProps<{
   visible: boolean
 }>()
@@ -11,6 +13,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     v-if="visible"
     class="fixed inset-0 z-50 flex items-center justify-center"

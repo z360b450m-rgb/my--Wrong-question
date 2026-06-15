@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 复习面板组件 —— 复习流程由 useReview Hook 驱动。
+// 禁止在此实现 SRS 算法、间隔计算、直接操作复习日志存储。
 import { ref, watch, nextTick, onUnmounted, computed } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SessionRecord } from '@/composables/useReview'
@@ -168,6 +170,7 @@ function ratingColor(q: number | string): string {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="flex-1 flex flex-col overflow-hidden p-4 gap-3">
     <!-- Session summary -->
     <template v-if="sessionDone">

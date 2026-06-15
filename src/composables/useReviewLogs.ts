@@ -9,6 +9,12 @@ function genId(): string {
 // Module-scoped singleton — shared by useReview and useStats
 const reviewLogs = ref<ReviewLog[]>([])
 
+// ===================================================================
+// @AI-GUIDE: 复习日志管理模块
+// 纯业务逻辑。模块级单例 ref (reviewLogs) 在 useReview 和 useStats
+// 间共享。日志加载/添加/删除均通过 db 统一导出操作。
+// 返回值类型签名必须向后兼容。
+// ===================================================================
 export function useReviewLogs() {
   async function loadLogs() {
     try {

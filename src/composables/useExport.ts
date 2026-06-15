@@ -6,6 +6,11 @@ function timestamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`
 }
 
+// ===================================================================
+// @AI-GUIDE: PDF 导出工具层
+// 纯格式化 + I/O 逻辑。按学科分组生成 HTML, 通过 window.print()
+// 触发打印。生成内容的结构变更必须在此处实现, 不可在组件中拼接。
+// ===================================================================
 export function useExport(onToast: (msg: string) => void) {
   function exportPDF(entries: NoteEntry[]) {
     if (entries.length === 0) {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 摄像头拍照组件 —— 封装 WebRTC 媒体捕获。拍照结果
+// 通过 emit 发送 DataURL, 不在此存储或操作业务数据。
 import { ref, onUnmounted } from 'vue'
 
 const emit = defineEmits<{
@@ -57,6 +59,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="stop">
     <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden w-[480px] max-w-[92vw]">
       <div class="relative bg-black">

@@ -78,6 +78,12 @@ async function reorderNotebooks(orderedIds: string[]) {
   notebooks.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
 }
 
+// ===================================================================
+// @AI-GUIDE: 错题本 CRUD 与状态管理层
+// 纯业务逻辑。错题本创建/更新/删除/排序均在此实现。
+// 模块级单例 ref (notebooks, activeId) 在组件间共享状态。
+// 返回值类型签名必须向后兼容。
+// ===================================================================
 export function useNotebooks() {
   return {
     notebooks,

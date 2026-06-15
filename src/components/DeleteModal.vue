@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 删除确认对话框 —— 纯 UI 组件。删除逻辑由父组件通过
+// emit 事件驱动。禁止在此直接执行删除操作。
 defineProps<{ visible: boolean }>()
 const emit = defineEmits<{
   confirm: []
@@ -7,6 +9,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     v-if="visible"
     class="fixed inset-0 bg-black/30 flex items-center justify-center z-[999]"

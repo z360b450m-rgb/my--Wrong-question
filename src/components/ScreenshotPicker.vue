@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 桌面截图选择器 (仅 Electron) —— 通过 desktopCapturer
+// 获取屏幕缩略图, 截图结果通过 emit 发送。不在此操作业务数据。
 import { ref, onMounted, onUnmounted } from 'vue'
 import ImageCropper from './ImageCropper.vue'
 
@@ -100,6 +102,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="emit('close')">
     <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden w-[680px] max-w-[94vw] max-h-[90vh] flex flex-col">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">

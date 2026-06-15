@@ -24,6 +24,12 @@ function genId(): string {
   return 'cuoti_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
 }
 
+// ===================================================================
+// @AI-GUIDE: JSON 导入导出工具层
+// 纯 I/O 逻辑。导出通过浏览器 download 机制, 导入通过 FileReader
+// 解析 + 校验。导入时自动生成新 ID 避免冲突。
+// 导出函数签名必须向后兼容。
+// ===================================================================
 export function useBackup(
   getEntries: () => NoteEntry[],
   getNotebookId: () => string,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 错题本菜单组件 —— 数据操作通过 useNotebooks Hook。
+// 禁止直接操作存储、编写业务逻辑、管理跨组件状态。
 import { ref, computed } from 'vue'
 import { useNotebooks } from '@/composables/useNotebooks'
 import { useEntries } from '@/composables/useEntries'
@@ -173,6 +175,7 @@ function onNotebookClick(id: string) {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="flex h-screen bg-[#F5F3F0] dark:bg-[#121215] text-[#1a1a1a] dark:text-[#f5f5f5] font-sans">
     <!-- ═══════════ LEFT SIDEBAR ═══════════ -->
     <aside class="w-[220px] flex-shrink-0 bg-white dark:bg-[#1c1c20] border-r border-[#E5E3E0]/50 dark:border-[#2e2e35]/50 flex flex-col">
