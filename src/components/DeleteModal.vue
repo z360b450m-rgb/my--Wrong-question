@@ -1,26 +1,28 @@
 <script setup lang="ts">
 // @AI-NOTE: 删除确认对话框 —— 纯 UI 组件。删除逻辑由父组件通过
 // emit 事件驱动。禁止在此直接执行删除操作。
-defineProps<{ visible: boolean }>()
+defineProps<{ visible: boolean }>();
 const emit = defineEmits<{
-  confirm: []
-  cancel: []
-}>()
+  confirm: [];
+  cancel: [];
+}>();
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     v-if="visible"
     class="fixed inset-0 bg-black/30 flex items-center justify-center z-[999]"
     @click.self="emit('cancel')"
   >
-    <div class="bg-white dark:bg-gray-900 rounded-lg p-5 shadow-xl max-w-[380px] w-[90%]">
+    <div class="bg-white dark:bg-[#141413] rounded-lg p-5 shadow-xl max-w-[380px] w-[90%]">
       <h3 class="text-base font-semibold mb-1.5">删除错题</h3>
-      <p class="text-gray-400 dark:text-gray-500 text-sm mb-4">确定要删除这道错题吗？此操作不可撤销。</p>
+      <p class="text-gray-400 dark:text-brand-mid text-sm mb-4">
+        确定要删除这道错题吗？此操作不可撤销。
+      </p>
       <div class="flex gap-2 justify-end">
         <button
-          class="px-3.5 py-1.5 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800 transition-all duration-200 ease-out active:scale-95"
+          class="px-3.5 py-1.5 rounded-md text-sm font-medium text-gray-600 dark:text-brand-light-gray hover:bg-gray-100 dark:hover:bg-[#2a2a28] dark:bg-[#1e1e1c] transition-all duration-200 ease-out active:scale-95"
           @click="emit('cancel')"
         >
           取消

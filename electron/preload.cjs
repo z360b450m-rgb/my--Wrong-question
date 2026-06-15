@@ -56,7 +56,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Review log API
   getAllReviewLogs: () => ipcRenderer.invoke('storage:getAllReviewLogs'),
   addReviewLog: (log) => ipcRenderer.invoke('storage:addReviewLog', log),
-  deleteReviewLogsByEntry: (entryId) => ipcRenderer.invoke('storage:deleteReviewLogsByEntry', entryId),
+  deleteReviewLogsByEntry: (entryId) =>
+    ipcRenderer.invoke('storage:deleteReviewLogsByEntry', entryId),
 
   // Desktop capture
   getDesktopSources: () => ipcRenderer.invoke('desktop:getSources'),

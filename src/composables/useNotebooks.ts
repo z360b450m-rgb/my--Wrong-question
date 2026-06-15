@@ -1,81 +1,105 @@
-import { ref, computed } from 'vue'
-import type { Notebook } from '@/types'
-import { db } from '@/services/db'
+import { ref, computed } from 'vue';
+import type { Notebook } from '@/types';
+import { db } from '@/services/db';
 
 function genId(): string {
-  return 'nb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+  return 'nb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 }
 
-const notebooks = ref<Notebook[]>([])
-const activeId = ref<string | null>(null)
+const notebooks = ref<Notebook[]>([]);
+const activeId = ref<string | null>(null);
 
-const activeNotebook = computed(() =>
-  notebooks.value.find((n) => n.id === activeId.value),
-)
+const activeNotebook = computed(() => notebooks.value.find((n) => n.id === activeId.value));
 
 async function loadNotebooks() {
   try {
-    const list = await db.getAllNotebooks()
-    list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    notebooks.value = list
+    const list = await db.getAllNotebooks();
+    list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    notebooks.value = list;
   } catch (e) {
-    console.error('Failed to load notebooks', e)
-    notebooks.value = []
+    console.error('Failed to load notebooks', e);
+    notebooks.value = [];
   }
 }
 
-async function createNotebook(name: string, description: string, instructions: string): Promise<Notebook> {
-  const now = Date.now()
-  const nb: Notebook = { id: genId(), name, description, instructions, createdAt: now, updatedAt: now }
-  await db.putNotebook(nb)
-  notebooks.value.push(nb)
-  return nb
+async function createNotebook(
+  name: string,
+  description: string,
+  instructions: string,
+): Promise<Notebook> {
+  const now = Date.now();
+  const nb: Notebook = {
+    id: genId(),
+    name,
+    description,
+    instructions,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.putNotebook(nb);
+  notebooks.value.push(nb);
+  return nb;
 }
 
-async function updateNotebook(id: string, partial: Partial<Pick<Notebook, 'name' | 'description' | 'instructions'>>) {
-  const nb = notebooks.value.find((n) => n.id === id)
-  if (!nb) return
-  Object.assign(nb, partial, { updatedAt: Date.now() })
-  await db.putNotebook(nb)
+async function updateNotebook(
+  id: string,
+  partial: Partial<Pick<Notebook, 'name' | 'description' | 'instructions'>>,
+) {
+  const nb = notebooks.value.find((n) => n.id === id);
+  if (!nb) return;
+  Object.assign(nb, partial, { updatedAt: Date.now() });
+  await db.putNotebook(nb);
 }
 
 async function deleteNotebook(id: string) {
   // Cascade: delete all entries in this notebook
   // The Electron main.cjs handles cascade; for idbDb we handle it here
-  await db.deleteNotebook(id)
-  notebooks.value = notebooks.value.filter((n) => n.id !== id)
-  if (activeId.value === id) activeId.value = null
+  await db.deleteNotebook(id);
+  notebooks.value = notebooks.value.filter((n) => n.id !== id);
+  if (activeId.value === id) activeId.value = null;
 }
 
-const LAST_NOTEBOOK_KEY = 'cuotiben_last_notebook'
+const LAST_NOTEBOOK_KEY = 'cuotiben_last_notebook';
 
 function selectNotebook(id: string) {
-  activeId.value = id
-  try { localStorage.setItem(LAST_NOTEBOOK_KEY, id) } catch {}
+  activeId.value = id;
+  try {
+    localStorage.setItem(LAST_NOTEBOOK_KEY, id);
+  } catch {
+    /* ignore */
+  }
 }
 
 function restoreLastNotebook(): string | null {
-  try { return localStorage.getItem(LAST_NOTEBOOK_KEY) } catch { return null }
+  try {
+    return localStorage.getItem(LAST_NOTEBOOK_KEY);
+  } catch {
+    return null;
+  }
 }
 
 function clearLastNotebook() {
-  try { localStorage.removeItem(LAST_NOTEBOOK_KEY) } catch {}
+  try {
+    localStorage.removeItem(LAST_NOTEBOOK_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 async function reorderNotebooks(orderedIds: string[]) {
-  const now = Date.now()
-  const updates: Promise<void>[] = []
+  const now = Date.now();
+  const updates: Promise<void>[] = [];
   orderedIds.forEach((id, idx) => {
-    const nb = notebooks.value.find((n) => n.id === id)
+    const nb = notebooks.value.find((n) => n.id === id);
     if (nb) {
-      nb.sortOrder = idx
-      nb.updatedAt = now
-      updates.push(db.putNotebook(nb))
+      nb.sortOrder = idx;
+      nb.updatedAt = now;
+      updates.push(db.putNotebook(nb));
     }
-  })
-  await Promise.all(updates)
+  });
+  await Promise.all(updates);
   // Re-sort the ref to reflect new order immediately
-  notebooks.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  notebooks.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 
 // ===================================================================
@@ -97,5 +121,5 @@ export function useNotebooks() {
     restoreLastNotebook,
     clearLastNotebook,
     reorderNotebooks,
-  }
+  };
 }

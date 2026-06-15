@@ -1,96 +1,102 @@
 <script setup lang="ts">
 // @AI-NOTE: 图像裁剪器 —— 纯交互组件。裁剪后的 DataURL
 // 通过 emit 发送, 不在此存储或操作业务数据。
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 
-const props = defineProps<{
-  imageSrc: string
-}>()
+defineProps<{
+  imageSrc: string;
+}>();
 
 const emit = defineEmits<{
-  crop: [dataUrl: string]
-  skip: []
-  cancel: []
-}>()
+  crop: [dataUrl: string];
+  skip: [];
+  cancel: [];
+}>();
 
-const containerRef = ref<HTMLDivElement | null>(null)
-const imgRef = ref<HTMLImageElement | null>(null)
+const containerRef = ref<HTMLDivElement | null>(null);
+const imgRef = ref<HTMLImageElement | null>(null);
 
-const imgDisplay = ref({ x: 0, y: 0, w: 0, h: 0 })
-const cropRect = ref({ x: 0, y: 0, w: 0, h: 0 })
-const imageLoaded = ref(false)
+const imgDisplay = ref({ x: 0, y: 0, w: 0, h: 0 });
+const cropRect = ref({ x: 0, y: 0, w: 0, h: 0 });
+const imageLoaded = ref(false);
 
-const dragging = ref<'move' | 'nw' | 'ne' | 'sw' | 'se' | 'create' | null>(null)
-const dragStart = ref({ x: 0, y: 0, cx: 0, cy: 0, cw: 0, ch: 0 })
+const dragging = ref<'move' | 'nw' | 'ne' | 'sw' | 'se' | 'create' | null>(null);
+const dragStart = ref({ x: 0, y: 0, cx: 0, cy: 0, cw: 0, ch: 0 });
 
-const HANDLE = 14
-const MIN_SIZE = 20
+const HANDLE = 14;
+const MIN_SIZE = 20;
 
 function initCrop() {
-  if (!imgDisplay.value.w || !imgDisplay.value.h) return
-  const m = 0.08
+  if (!imgDisplay.value.w || !imgDisplay.value.h) return;
+  const m = 0.08;
   cropRect.value = {
     x: imgDisplay.value.x + imgDisplay.value.w * m,
     y: imgDisplay.value.y + imgDisplay.value.h * m,
     w: imgDisplay.value.w * (1 - m * 2),
     h: imgDisplay.value.h * (1 - m * 2),
-  }
+  };
 }
 
 function onImageLoad() {
-  if (!containerRef.value || !imgRef.value) return
-  const cw = containerRef.value.clientWidth
-  const ch = containerRef.value.clientHeight
-  const iw = imgRef.value.naturalWidth
-  const ih = imgRef.value.naturalHeight
+  if (!containerRef.value || !imgRef.value) return;
+  const cw = containerRef.value.clientWidth;
+  const ch = containerRef.value.clientHeight;
+  const iw = imgRef.value.naturalWidth;
+  const ih = imgRef.value.naturalHeight;
 
-  const scale = Math.min(cw / iw, ch / ih, 1)
-  const dw = iw * scale
-  const dh = ih * scale
+  const scale = Math.min(cw / iw, ch / ih, 1);
+  const dw = iw * scale;
+  const dh = ih * scale;
 
   imgDisplay.value = {
     x: (cw - dw) / 2,
     y: (ch - dh) / 2,
     w: dw,
     h: dh,
-  }
+  };
 
-  imageLoaded.value = true
-  nextTick(() => initCrop())
+  imageLoaded.value = true;
+  nextTick(() => initCrop());
 }
 
 function hitTest(px: number, py: number): 'nw' | 'ne' | 'sw' | 'se' | 'move' | null {
-  const r = cropRect.value
-  const h = HANDLE
-  if (Math.abs(px - r.x) < h && Math.abs(py - r.y) < h) return 'nw'
-  if (Math.abs(px - (r.x + r.w)) < h && Math.abs(py - r.y) < h) return 'ne'
-  if (Math.abs(px - r.x) < h && Math.abs(py - (r.y + r.h)) < h) return 'sw'
-  if (Math.abs(px - (r.x + r.w)) < h && Math.abs(py - (r.y + r.h)) < h) return 'se'
-  if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return 'move'
-  return null
+  const r = cropRect.value;
+  const h = HANDLE;
+  if (Math.abs(px - r.x) < h && Math.abs(py - r.y) < h) return 'nw';
+  if (Math.abs(px - (r.x + r.w)) < h && Math.abs(py - r.y) < h) return 'ne';
+  if (Math.abs(px - r.x) < h && Math.abs(py - (r.y + r.h)) < h) return 'sw';
+  if (Math.abs(px - (r.x + r.w)) < h && Math.abs(py - (r.y + r.h)) < h) return 'se';
+  if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return 'move';
+  return null;
 }
 
 function clampCrop() {
-  const r = cropRect.value
-  const img = imgDisplay.value
-  if (r.w < MIN_SIZE) r.w = MIN_SIZE
-  if (r.h < MIN_SIZE) r.h = MIN_SIZE
-  if (r.x < img.x) r.x = img.x
-  if (r.y < img.y) r.y = img.y
-  if (r.x + r.w > img.x + img.w) r.x = img.x + img.w - r.w
-  if (r.y + r.h > img.y + img.h) r.y = img.y + img.h - r.h
+  const r = cropRect.value;
+  const img = imgDisplay.value;
+  if (r.w < MIN_SIZE) r.w = MIN_SIZE;
+  if (r.h < MIN_SIZE) r.h = MIN_SIZE;
+  if (r.x < img.x) r.x = img.x;
+  if (r.y < img.y) r.y = img.y;
+  if (r.x + r.w > img.x + img.w) r.x = img.x + img.w - r.w;
+  if (r.y + r.h > img.y + img.h) r.y = img.y + img.h - r.h;
   // Re-clamp after coordinate adjustments above could have invalidated size
-  if (r.x < img.x) { r.w -= (img.x - r.x); r.x = img.x }
-  if (r.y < img.y) { r.h -= (img.y - r.y); r.y = img.y }
-  if (r.w < MIN_SIZE) r.w = MIN_SIZE
-  if (r.h < MIN_SIZE) r.h = MIN_SIZE
+  if (r.x < img.x) {
+    r.w -= img.x - r.x;
+    r.x = img.x;
+  }
+  if (r.y < img.y) {
+    r.h -= img.y - r.y;
+    r.y = img.y;
+  }
+  if (r.w < MIN_SIZE) r.w = MIN_SIZE;
+  if (r.h < MIN_SIZE) r.h = MIN_SIZE;
 }
 
 function onPointerDown(e: PointerEvent) {
-  if (!imageLoaded.value) return
-  const hit = hitTest(e.clientX, e.clientY)
+  if (!imageLoaded.value) return;
+  const hit = hitTest(e.clientX, e.clientY);
   if (hit) {
-    dragging.value = hit
+    dragging.value = hit;
     dragStart.value = {
       x: e.clientX,
       y: e.clientY,
@@ -98,10 +104,10 @@ function onPointerDown(e: PointerEvent) {
       cy: cropRect.value.y,
       cw: cropRect.value.w,
       ch: cropRect.value.h,
-    }
-    ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+    };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   } else {
-    dragging.value = 'create'
+    dragging.value = 'create';
     dragStart.value = {
       x: e.clientX,
       y: e.clientY,
@@ -109,107 +115,107 @@ function onPointerDown(e: PointerEvent) {
       cy: e.clientY,
       cw: 0,
       ch: 0,
-    }
-    ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+    };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }
 }
 
 function onPointerMove(e: PointerEvent) {
-  if (!dragging.value) return
-  const dx = e.clientX - dragStart.value.x
-  const dy = e.clientY - dragStart.value.y
-  const ds = dragStart.value
+  if (!dragging.value) return;
+  const dx = e.clientX - dragStart.value.x;
+  const dy = e.clientY - dragStart.value.y;
+  const ds = dragStart.value;
 
   switch (dragging.value) {
     case 'move':
-      cropRect.value.x = ds.cx + dx
-      cropRect.value.y = ds.cy + dy
-      break
+      cropRect.value.x = ds.cx + dx;
+      cropRect.value.y = ds.cy + dy;
+      break;
     case 'se': {
-      cropRect.value.w = Math.max(MIN_SIZE, ds.cw + dx)
-      cropRect.value.h = Math.max(MIN_SIZE, ds.ch + dy)
-      break
+      cropRect.value.w = Math.max(MIN_SIZE, ds.cw + dx);
+      cropRect.value.h = Math.max(MIN_SIZE, ds.ch + dy);
+      break;
     }
     case 'nw': {
-      const nw = Math.max(MIN_SIZE, ds.cw - dx)
-      const nh = Math.max(MIN_SIZE, ds.ch - dy)
-      cropRect.value.x = ds.cx + (ds.cw - nw)
-      cropRect.value.y = ds.cy + (ds.ch - nh)
-      cropRect.value.w = nw
-      cropRect.value.h = nh
-      break
+      const nw = Math.max(MIN_SIZE, ds.cw - dx);
+      const nh = Math.max(MIN_SIZE, ds.ch - dy);
+      cropRect.value.x = ds.cx + (ds.cw - nw);
+      cropRect.value.y = ds.cy + (ds.ch - nh);
+      cropRect.value.w = nw;
+      cropRect.value.h = nh;
+      break;
     }
     case 'ne': {
-      const nw = Math.max(MIN_SIZE, ds.cw + dx)
-      const nh = Math.max(MIN_SIZE, ds.ch - dy)
-      cropRect.value.y = ds.cy + (ds.ch - nh)
-      cropRect.value.w = nw
-      cropRect.value.h = nh
-      break
+      const nw = Math.max(MIN_SIZE, ds.cw + dx);
+      const nh = Math.max(MIN_SIZE, ds.ch - dy);
+      cropRect.value.y = ds.cy + (ds.ch - nh);
+      cropRect.value.w = nw;
+      cropRect.value.h = nh;
+      break;
     }
     case 'sw': {
-      const nw = Math.max(MIN_SIZE, ds.cw - dx)
-      const nh = Math.max(MIN_SIZE, ds.ch + dy)
-      cropRect.value.x = ds.cx + (ds.cw - nw)
-      cropRect.value.w = nw
-      cropRect.value.h = nh
-      break
+      const nw = Math.max(MIN_SIZE, ds.cw - dx);
+      const nh = Math.max(MIN_SIZE, ds.ch + dy);
+      cropRect.value.x = ds.cx + (ds.cw - nw);
+      cropRect.value.w = nw;
+      cropRect.value.h = nh;
+      break;
     }
     case 'create': {
-      const x1 = Math.min(e.clientX, ds.cx)
-      const y1 = Math.min(e.clientY, ds.cy)
-      const x2 = Math.max(e.clientX, ds.cx)
-      const y2 = Math.max(e.clientY, ds.cy)
-      cropRect.value.x = x1
-      cropRect.value.y = y1
-      cropRect.value.w = x2 - x1
-      cropRect.value.h = y2 - y1
-      break
+      const x1 = Math.min(e.clientX, ds.cx);
+      const y1 = Math.min(e.clientY, ds.cy);
+      const x2 = Math.max(e.clientX, ds.cx);
+      const y2 = Math.max(e.clientY, ds.cy);
+      cropRect.value.x = x1;
+      cropRect.value.y = y1;
+      cropRect.value.w = x2 - x1;
+      cropRect.value.h = y2 - y1;
+      break;
     }
   }
-  clampCrop()
+  clampCrop();
 }
 
 function onPointerUp() {
-  dragging.value = null
+  dragging.value = null;
 }
 
 function doCrop() {
-  const canvas = document.createElement('canvas')
-  const img = imgRef.value!
-  const d = imgDisplay.value
-  const c = cropRect.value
+  const canvas = document.createElement('canvas');
+  const img = imgRef.value!;
+  const d = imgDisplay.value;
+  const c = cropRect.value;
 
-  const sx = (c.x - d.x) / d.w * img.naturalWidth
-  const sy = (c.y - d.y) / d.h * img.naturalHeight
-  const sw = c.w / d.w * img.naturalWidth
-  const sh = c.h / d.h * img.naturalHeight
+  const sx = ((c.x - d.x) / d.w) * img.naturalWidth;
+  const sy = ((c.y - d.y) / d.h) * img.naturalHeight;
+  const sw = (c.w / d.w) * img.naturalWidth;
+  const sh = (c.h / d.h) * img.naturalHeight;
 
-  canvas.width = Math.round(sw)
-  canvas.height = Math.round(sh)
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+  canvas.width = Math.round(sw);
+  canvas.height = Math.round(sh);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
-  emit('crop', canvas.toDataURL('image/png'))
+  emit('crop', canvas.toDataURL('image/png'));
 }
 
 // Keyboard shortcut: Enter to confirm, Escape to skip
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') doCrop()
-  if (e.key === 'Escape') emit('skip')
+  if (e.key === 'Enter') doCrop();
+  if (e.key === 'Escape') emit('skip');
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', onKeydown)
-})
+  window.addEventListener('keydown', onKeydown);
+});
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', onKeydown)
-})
+  window.removeEventListener('keydown', onKeydown);
+});
 </script>
 
 <template>
-<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
+  <!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     ref="containerRef"
     class="fixed inset-0 z-[60] bg-black/80 select-none"
@@ -250,14 +256,25 @@ onUnmounted(() => {
         }"
       >
         <!-- Corner handles -->
-        <div class="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize" />
-        <div class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize" />
-        <div class="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize" />
-        <div class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize" />
+        <div
+          class="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize"
+        />
+        <div
+          class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize"
+        />
+        <div
+          class="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nesw-resize"
+        />
+        <div
+          class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-white border border-gray-300 rounded-sm pointer-events-auto cursor-nwse-resize"
+        />
 
         <!-- Size label -->
-        <span class="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] text-white/70 whitespace-nowrap font-mono">
-          {{ Math.round(cropRect.w / imgDisplay.w * (imgRef?.naturalWidth ?? 1)) }} × {{ Math.round(cropRect.h / imgDisplay.h * (imgRef?.naturalHeight ?? 1)) }}
+        <span
+          class="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] text-white/70 whitespace-nowrap font-mono"
+        >
+          {{ Math.round((cropRect.w / imgDisplay.w) * (imgRef?.naturalWidth ?? 1)) }} ×
+          {{ Math.round((cropRect.h / imgDisplay.h) * (imgRef?.naturalHeight ?? 1)) }}
         </span>
       </div>
     </div>

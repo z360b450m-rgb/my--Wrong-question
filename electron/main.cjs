@@ -52,7 +52,9 @@ function getDataDir() {
           return dataDir;
         }
       }
-    } catch { /* fall through to default */ }
+    } catch {
+      /* fall through to default */
+    }
     dataDir = getDefaultDataDir();
   }
   return dataDir;
@@ -64,7 +66,9 @@ function readConfig() {
     if (fs.existsSync(configPath)) {
       return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return {};
 }
 
@@ -97,7 +101,8 @@ function getDataFilePath() {
 function readData() {
   const filePath = getDataFilePath();
   try {
-    if (!fs.existsSync(filePath)) return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] };
+    if (!fs.existsSync(filePath))
+      return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] };
     const raw = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(raw);
     if (!data.notebooks) data.notebooks = [];
@@ -273,7 +278,9 @@ ipcMain.handle('storage:setDataDir', async () => {
   try {
     const oldFile = path.join(oldDir, 'cuotiben-data.json');
     if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return newDir;
 });
 
@@ -317,7 +324,9 @@ function createWindow() {
 
   Menu.setApplicationMenu(null);
 
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 app.whenReady().then(createWindow);

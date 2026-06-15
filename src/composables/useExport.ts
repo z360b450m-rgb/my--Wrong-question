@@ -1,10 +1,4 @@
-import type { NoteEntry } from '@/types'
-
-function timestamp(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`
-}
+import type { NoteEntry } from '@/types';
 
 // ===================================================================
 // @AI-GUIDE: PDF 导出工具层
@@ -14,19 +8,19 @@ function timestamp(): string {
 export function useExport(onToast: (msg: string) => void) {
   function exportPDF(entries: NoteEntry[]) {
     if (entries.length === 0) {
-      onToast('暂无错题可导出')
-      return
+      onToast('暂无错题可导出');
+      return;
     }
 
     // Group by subject
-    const groups: Record<string, NoteEntry[]> = {}
+    const groups: Record<string, NoteEntry[]> = {};
     for (const entry of entries) {
-      const subj = entry.subject || '未分类'
-      if (!groups[subj]) groups[subj] = []
-      groups[subj].push(entry)
+      const subj = entry.subject || '未分类';
+      if (!groups[subj]) groups[subj] = [];
+      groups[subj].push(entry);
     }
 
-    const now = new Date().toLocaleDateString('zh-CN')
+    const now = new Date().toLocaleDateString('zh-CN');
 
     const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -64,7 +58,7 @@ ${items
   .map(
     (e) => `
 <div class="card">
-  <div class="card-title">${e.source || ''} ${(e.tags && e.tags.length > 0) ? '· ' + e.tags.join(', ') : ''}</div>
+  <div class="card-title">${e.source || ''} ${e.tags && e.tags.length > 0 ? '· ' + e.tags.join(', ') : ''}</div>
   <div class="question">${e.question || '(无题目)'}</div>
   ${e.wrongAnswer ? `<div class="answer-label">我的答案</div><div class="wrong">${e.wrongAnswer}</div>` : ''}
   ${e.wrongAnswer && e.correctAnswer ? '<hr>' : ''}
@@ -75,21 +69,21 @@ ${items
   )
   .join('\n')}
 </body>
-</html>`
+</html>`;
 
-    const w = window.open('', '_blank')
+    const w = window.open('', '_blank');
     if (!w) {
-      onToast('弹窗被拦截，请允许本站弹窗后重试')
-      return
+      onToast('弹窗被拦截，请允许本站弹窗后重试');
+      return;
     }
-    w.document.write(html)
-    w.document.close()
+    w.document.write(html);
+    w.document.close();
     w.onload = () => {
       setTimeout(() => {
-        w.print()
-      }, 500)
-    }
+        w.print();
+      }, 500);
+    };
   }
 
-  return { exportPDF }
+  return { exportPDF };
 }
