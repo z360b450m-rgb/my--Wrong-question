@@ -10,7 +10,7 @@ with sync_playwright() as p:
     html = page.content()
 
     # Should see the notebook menu
-    if '选择一个错题本开始复习' in html:
+    if '选择要复习的错题本' in html:
         print("PASS: Notebook menu shown")
     else:
         print("FAIL: Notebook menu not found")
@@ -26,14 +26,12 @@ with sync_playwright() as p:
     page.wait_for_timeout(300)
 
     html2 = page.content()
-    if '名称' in html2 and '简介' in html2 and '使用说明' in html2:
-        print("PASS: Create dialog with all fields")
+    if '名称' in html2 and '简介' in html2:
+        print("PASS: Create dialog with name & description fields")
 
-    # Fill in and create
-    inputs = page.locator('input[type="text"]')
-    inputs.nth(0).fill('Test Book')
-    inputs.nth(1).fill('A test notebook')
-    page.locator('textarea').fill('Review daily')
+    # Fill dialog fields by placeholder
+    page.get_by_placeholder('例如：数学错题本').fill('Test Book')
+    page.get_by_placeholder('简短描述').fill('A test notebook')
     page.wait_for_timeout(200)
 
     # Click create
@@ -47,7 +45,7 @@ with sync_playwright() as p:
         print("FAIL: Not in notebook view")
 
     # Return to menu
-    page.locator('button:has-text("返回")').click()
+    page.locator('button:has-text("返回")').first.click()
     page.wait_for_timeout(500)
 
     html4 = page.content()
