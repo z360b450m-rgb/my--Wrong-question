@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 工具栏组件 —— 所有操作通过 emit 事件委托给父组件。
+// 禁止在此直接操作存储或执行保存/删除等业务逻辑。
 import { ref, onMounted, onUnmounted } from 'vue'
 
 defineProps<{
@@ -60,6 +62,7 @@ function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'delete') 
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     ref="toolbarRef"
     class="flex items-center bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 transition-all duration-300"

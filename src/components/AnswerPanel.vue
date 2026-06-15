@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 答案面板组件 —— 纯展示 + 编辑。数据通过 props 传入,
+// 变更通过 emit 委托。禁止直接操作存储或实现保存逻辑。
 import { ref, watch, nextTick, computed } from 'vue'
 import CameraCapture from './CameraCapture.vue'
 import ScreenshotPicker from './ScreenshotPicker.vue'
@@ -167,6 +169,7 @@ function onScreenshotCapture(dataUrl: string) {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     class="answer-panel flex-1 flex flex-col overflow-hidden rounded-lg border group"
     :class="panelBg"

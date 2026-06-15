@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 根组件 —— 状态调度中心。数据通过 composables 获取,
+// 通过 props 传递、events 收集。禁止在此编写业务逻辑或直接操作存储。
 import { provide, computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useEntries } from './composables/useEntries'
 import { migrateFromIndexedDB } from './services/db'
@@ -417,6 +419,7 @@ watch(activeId, (newId) => {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <NotebookMenu
     v-if="showNotebookMenu"
     @enter="handleEnterNotebook"

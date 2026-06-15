@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 工作区布局组件 —— 仅编排子组件布局。数据通过 props/events
+// 委托给 App.vue, 禁止直接操作存储或编写业务逻辑。
 import { ref, computed } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SortKey, SortDir } from '@/composables/useFilter'
@@ -167,6 +169,7 @@ function onWheel(e: WheelEvent) {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div class="flex h-screen bg-white dark:bg-gray-900">
     <AppSidebar
       :notebook-name="notebookName"

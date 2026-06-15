@@ -16,6 +16,12 @@ interface KeyboardActions {
   onRedo?: () => void
 }
 
+// ===================================================================
+// @AI-GUIDE: 键盘快捷键绑定层
+// 例外模块 —— 本 composable 绑定 window keydown 事件, 是唯一的
+// 全局键盘交互入口。新增/修改快捷键必须在 KeyboardActions 接口
+// 中声明, 并在 handler 中实现。快捷键的启用/禁用逻辑由调用方控制。
+// ===================================================================
 export function useKeyboard(actions: KeyboardActions) {
   function handler(e: KeyboardEvent) {
     const ctrl = e.ctrlKey || e.metaKey

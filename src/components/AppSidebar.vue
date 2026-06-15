@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 侧边栏组件 —— 筛选/排序/条目选择由 useFilter/useEntries
+// Hook 驱动。禁止在此实现筛选逻辑或直接操作数据库。
 import { ref } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SortKey, SortDir } from '@/composables/useFilter'
@@ -116,6 +118,7 @@ function cancelTags() {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <aside
     class="bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden transition-[width] duration-300 ease-out"
     :class="collapsed ? 'w-[48px]' : 'w-[280px]'"

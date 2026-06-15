@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 统计面板组件 —— 统计数据由 useStats Hook 计算。
+// 禁止在此直接计算统计指标或操作存储。
 import { computed } from 'vue'
 import type { StatsState } from '@/composables/useStats'
 
@@ -17,6 +19,7 @@ const hueStep = computed(() => {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div>
     <!-- Backdrop -->
     <div class="fixed inset-0 z-40 bg-black/15" @click="emit('close')" />

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 批量操作栏（已废弃）—— 功能已迁移至 AppSidebar 下拉菜单。
+// 保留此组件以兼容未来可能的复用场景。
 import { ref } from 'vue'
 
 const props = defineProps<{
@@ -41,6 +43,7 @@ function cancelTags() {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     class="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-gray-900 text-white rounded-xl shadow-2xl px-4 py-3 text-[13px] font-medium"
   >

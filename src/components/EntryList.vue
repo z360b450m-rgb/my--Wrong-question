@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 条目列表组件 —— 条目展示/选择/排序由 useFilter/useEntries
+// Hook 驱动。禁止在此实现筛选/排序逻辑或直接操作存储。
 import { ref, nextTick, computed, onUnmounted } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SortKey } from '@/composables/useFilter'
@@ -215,6 +217,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div v-if="entries.length === 0" class="p-6 text-center text-gray-400 dark:text-gray-500 text-xs">
     暂无错题
   </div>

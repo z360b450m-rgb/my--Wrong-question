@@ -42,6 +42,12 @@ watch(settings, (val) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
 }, { deep: true })
 
+// ===================================================================
+// @AI-GUIDE: 复习参数配置管理层
+// 纯业务逻辑。SRS 参数 (间隔天数/增长系数等) 的持久化读写、
+// 默认值重置均在此实现。设置变更通过 localStorage 自动同步。
+// ReviewSettings 接口必须向后兼容。
+// ===================================================================
 export function useReviewSettings() {
   function resetToDefaults() {
     settings.value = { ...DEFAULTS }

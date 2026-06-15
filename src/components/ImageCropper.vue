@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 图像裁剪器 —— 纯交互组件。裁剪后的 DataURL
+// 通过 emit 发送, 不在此存储或操作业务数据。
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 
 const props = defineProps<{
@@ -207,6 +209,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div
     ref="containerRef"
     class="fixed inset-0 z-[60] bg-black/80 select-none"

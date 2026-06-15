@@ -97,6 +97,12 @@ export interface SessionRecord {
   quality: number | string
 }
 
+// ===================================================================
+// @AI-GUIDE: 间隔重复复习算法 (SM-2 变体)
+// 纯业务逻辑。SRS 评级/间隔计算/掌握等级判定均在此实现。
+// 修改复习算法规则时必须在此处变更, 且确保 ReviewState 返回值类型
+// 向后兼容 —— 只能追加字段。
+// ===================================================================
 export function useReview(
   entries: Ref<NoteEntry[]>,
   showToast?: (msg: string) => void,

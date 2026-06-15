@@ -23,6 +23,11 @@ export interface FilterState {
   setSort: (key: SortKey, dir?: SortDir) => void
 }
 
+// ===================================================================
+// @AI-GUIDE: 筛选、搜索与排序逻辑层
+// 纯业务逻辑。学科/标签/掌握程度筛选、关键词搜索、多维度排序
+// 均在此实现。FilterState 返回值类型必须向后兼容。
+// ===================================================================
 export function useFilter(entries: Ref<NoteEntry[]>): FilterState {
   const activeSubject = ref('__all__')
   const activeTag = ref<string | null>(null)

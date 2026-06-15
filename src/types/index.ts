@@ -1,3 +1,27 @@
+// ===================================================================
+// @AI-CRITICAL-RULES: 核心数据结构定义层
+//
+// 本文件定义了系统所有持久化数据的 TypeScript 接口，是数据库表结构
+// 的"单一事实来源"(Single Source of Truth)。这些接口直接映射到
+// IndexedDB Object Stores 和 Electron 文件存储的 JSON 结构。
+//
+// ■ 绝对禁止的操作：
+//   1. 删除或重命名任何现有字段 —— 会导致已持久化的用户数据损坏。
+//   2. 修改现有字段的类型 —— 会导致数据库迁移冲突和运行时错误。
+//   3. 移除或缩减接口 —— 下游代码、数据库 schema、导入导出逻辑
+//      均依赖这些类型定义。
+//
+// ■ 允许的扩展方式（仅限以下两种）：
+//   1. 在现有接口末尾追加可选字段（?）。
+//   2. 新建独立的接口 / 类型，并在对应的数据库 Store 中创建新表。
+//
+// ■ 修改前必读文件：
+//   - src/services/db.ts（数据库实现 & IndexedDB schema 版本管理）
+//   - src/composables/useEntries.ts（条目 CRUD 核心逻辑）
+//   - electron/main.cjs（Electron 端文件存储 & 级联删除）
+//
+// VIOLATION OF THESE RULES WILL CAUSE DATA CORRUPTION.
+// ===================================================================
 export interface Notebook {
   id: string
   name: string

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// @AI-NOTE: 设置面板组件 —— 设置读写通过 useReviewSettings/
+// useDarkMode Hook。禁止直接操作 localStorage 或存储。
 import { reactive, ref, watch } from 'vue'
 import { useReviewSettings } from '@/composables/useReviewSettings'
 
@@ -30,6 +32,7 @@ function save() {
 </script>
 
 <template>
+<!-- @AI-VIEW: DOM 可自由重构。样式仅限 Tailwind CSS 工具类。严禁内联 style 或自定义 CSS。 -->
   <div>
     <!-- Backdrop -->
     <div class="fixed inset-0 z-40 bg-black/15" @click="emit('close')" />

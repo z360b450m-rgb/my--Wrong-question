@@ -31,6 +31,13 @@ export interface DrawingState {
   setStoredDrawing: (entryId: string, dataUrl: string) => void
 }
 
+// ===================================================================
+// @AI-GUIDE: 画笔批注引擎 (Canvas 操作层)
+// 例外模块 —— 本 composable 是唯一允许直接操作 Canvas DOM 的业务模块。
+// 画笔/橡皮/撤销重做/颜色管理等绘图状态均在此管理。
+// 绘图数据通过 memory Map 缓存, 保存时写入 entry.drawing 字段。
+// DrawingState 返回值类型必须向后兼容。
+// ===================================================================
 export function useDrawing(): DrawingState {
   const drawingEnabled = ref(false)
   const activeTool = ref<DrawTool>('pen')
