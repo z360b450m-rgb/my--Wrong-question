@@ -143,13 +143,16 @@ export function useReview(
 
   const { settings } = useReviewSettings()
 
-  // When settings change, recalculate nextReviewDate for all entries
+  // When settings change, recalculate nextReviewDate for all entries AND persist to DB
   watch(
     settings,
-    () => {
+    async () => {
       const s = settings.value
-      entries.value.forEach((entry) => {
-        if (!entry.lastReviewDate) return
+      const updatePromises: Promise<void>[] = []
+
+      for (const entry of entries.value) {
+        if (!entry.lastReviewDate) continue
+
         const passes = entry.consecutivePasses ?? 0
         const interval =
           passes === 0
@@ -162,9 +165,26 @@ export function useReview(
                 s.growthFactor,
                 s.maxInterval,
               )
-        entry.interval = interval
-        entry.nextReviewDate = entry.lastReviewDate + interval * 86400000
-      })
+
+        // 只有当时间间隔真的发生变化时，才更新并写入数据库
+        if (entry.interval !== interval) {
+          entry.interval = interval
+          entry.nextReviewDate = entry.lastReviewDate + interval * 86400000
+
+          // 使用 JSON.parse(JSON.stringify) 去除 Vue 的 Proxy 响应式包装，防止 IndexedDB 报 CloneError
+          updatePromises.push(db.put(JSON.parse(JSON.stringify(entry))))
+        }
+      }
+
+      // 批量将修改过的卡片持久化到数据库
+      if (updatePromises.length > 0) {
+        try {
+          await Promise.all(updatePromises)
+        } catch (error) {
+          console.error('Failed to sync updated review intervals to database:', error)
+          showToast?.('同步设置到数据库失败，部分卡片可能未更新')
+        }
+      }
     },
     { deep: true },
   )
@@ -267,13 +287,16 @@ export function useReview(
     const entry = entries.value.find((e) => e.id === card.id)
     if (!entry) return
 
+    // 1. 核心修复：深拷贝当前卡片，所有状态演进和非纯操作都在副本上进行
+    const entryClone = JSON.parse(JSON.stringify(entry))
+
     if (note && note.trim()) {
       const separator = '\n\n————————————————\n\n'
-      entry.wrongAnswer = (entry.wrongAnswer || '') + separator + note.trim()
+      entryClone.wrongAnswer = (entryClone.wrongAnswer || '') + separator + note.trim()
     }
 
     applyCustom(
-      entry,
+      entryClone,
       rating as string,
       settings.value.firstReviewDays,
       settings.value.unmasteredDays,
@@ -281,14 +304,22 @@ export function useReview(
       settings.value.growthFactor,
       settings.value.maxInterval,
     )
+
     try {
-      await db.put(JSON.parse(JSON.stringify(entry)))
-      await addLog(entry.id, rating)
+      // 2. 核心修复：首先尝试将更新后的副本写入数据库
+      // 此时如果写入失败，会直接进入 catch 块，不会影响到界面和真实的 Vue 状态
+      await db.put(JSON.parse(JSON.stringify(entryClone)))
+      await addLog(entryClone.id, rating)
     } catch (err) {
       console.error('Failed to save review result', err)
       showToast?.('保存复习记录失败，请重试')
+      // 拦截返回，不执行任何内存状态的变更
       return
     }
+
+    // 3. 核心修复：只有当数据库完全持久化成功后，才同步修改 Vue 的响应式状态
+    // Object.assign 会触发 Vue 的响应式更新，使界面安全、正确地刷新
+    Object.assign(entry, entryClone)
 
     sessionRecords.value.push({
       entryId: entry.id,
