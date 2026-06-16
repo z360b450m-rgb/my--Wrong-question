@@ -15,6 +15,8 @@ import { useExport } from './composables/useExport'
 import { useStats } from './composables/useStats'
 import { useKeyboard } from './composables/useKeyboard'
 import { useDarkMode } from './composables/useDarkMode'
+import { parsePastedText } from './utils/parsePastedText'
+import { db } from './services/db'
 import Workspace from './components/Workspace.vue'
 import NotebookMenu from './components/NotebookMenu.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
@@ -114,6 +116,7 @@ const {
   penColor,
   canUndo,
   canRedo,
+  currentEntryId,
   toggleDrawing,
   setTool,
   setColor,
@@ -126,7 +129,7 @@ const {
   setCanvasParent,
   captureDrawing,
   setStoredDrawing,
-} = useDrawing()
+} = useDrawing(markDirty)
 
 const { exportData, importData } = useBackup(
   () => notebookEntries.value,
@@ -268,6 +271,59 @@ function handleConfirmDelete() {
   deleteCurrent()
 }
 
+// Batch import
+const showBatchImport = ref(false)
+const batchImportText = ref('')
+const batchImportLoading = ref(false)
+
+function handleOpenBatchImport() {
+  batchImportText.value = ''
+  showBatchImport.value = true
+}
+
+async function handleConfirmBatchImport() {
+  if (!batchImportText.value.trim() || !activeNotebookId.value) return
+
+  batchImportLoading.value = true
+  try {
+    const parsed = parsePastedText(batchImportText.value, activeNotebookId.value)
+    const now = Date.now()
+    for (const item of parsed) {
+      const entry = {
+        id:
+          'cuoti_' +
+          now +
+          '_' +
+          Math.random().toString(36).slice(2, 7) +
+          '_' +
+          parsed.indexOf(item),
+        notebookId: activeNotebookId.value,
+        title: (item.question || '').slice(0, 40),
+        question: item.question || '',
+        wrongAnswer: item.wrongAnswer || '',
+        correctAnswer: item.correctAnswer || '',
+        subject: item.subject || '未分类',
+        source: item.source || '批量导入',
+        tags: item.tags || [],
+        masteryLevel: 0,
+        consecutivePasses: 0,
+        nextReviewDate: 0,
+        createdAt: now + parsed.indexOf(item),
+        updatedAt: now + parsed.indexOf(item),
+      }
+      await db.put(JSON.parse(JSON.stringify(entry)))
+    }
+    await loadEntries()
+    showToast(`已导入 ${parsed.length} 道错题`)
+    showBatchImport.value = false
+  } catch (err) {
+    console.error('Batch import failed:', err)
+    showToast('批量导入失败，请重试')
+  } finally {
+    batchImportLoading.value = false
+  }
+}
+
 // Batch actions
 const showBatchDeleteConfirm = ref(false)
 
@@ -331,6 +387,19 @@ function handleStartReview(force = false) {
 }
 
 function handleMountCanvas(el: HTMLElement, entryId: string) {
+  // Sync drawing to the entry we're leaving before switching
+  if (currentEntryId.value && currentEntryId.value !== entryId) {
+    const oldEntry = entries.value.find((e) => e.id === currentEntryId.value)
+    if (oldEntry) {
+      const dataUrl = captureDrawing()
+      if (dataUrl) {
+        oldEntry.drawing = dataUrl
+      } else {
+        delete oldEntry.drawing
+      }
+    }
+  }
+
   mountCanvas(el)
   // Pre-populate store from persisted drawing data
   const entry = entries.value.find((e) => e.id === entryId)
@@ -518,6 +587,7 @@ watch(activeId, (_newId) => {
       @export-json="exportData"
       @export-pdf="handleExportPDF"
       @import-json="importData"
+      @import-text="handleOpenBatchImport"
       @toggle-stats="statsOpen = !statsOpen"
       @toggle-settings="settingsOpen = !settingsOpen"
       @toggle-dark="toggleDark"
@@ -536,6 +606,48 @@ watch(activeId, (_newId) => {
       @toggle-dark="toggleDark"
       @change-data-dir="handleChangeDataDir"
     />
+  </Transition>
+  <!-- Batch text import modal -->
+  <Transition name="stats">
+    <div
+      v-if="showBatchImport"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+      @click.self="showBatchImport = false"
+    >
+      <div
+        class="bg-white dark:bg-[#1e1e1c] rounded-2xl shadow-xl border border-gray-200 dark:border-[#2e2e2c] w-full max-w-lg mx-4 p-6"
+      >
+        <h2 class="text-[15px] font-semibold text-gray-800 dark:text-brand-light-gray mb-1">
+          批量导入错题
+        </h2>
+        <p class="text-[12px] text-gray-400 dark:text-brand-mid mb-4">
+          粘贴带序号的题目文本，支持 "答案：" 或 "解析：" 分割。示例格式：<br />
+          <code class="text-[11px]">1. 题目内容... 答案：正确答案</code>
+        </p>
+        <textarea
+          v-model="batchImportText"
+          class="w-full h-48 px-3 py-2 text-[13px] rounded-lg border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#141412] text-gray-700 dark:text-brand-light-gray focus:outline-none focus:border-accent/40 resize-none"
+          placeholder="在此粘贴题目文本..."
+          :disabled="batchImportLoading"
+        />
+        <div class="flex justify-end gap-2 mt-4">
+          <button
+            class="px-4 py-1.5 text-[12px] rounded-lg text-gray-500 dark:text-brand-mid hover:bg-gray-100 dark:hover:bg-[#2a2a28] transition-colors"
+            @click="showBatchImport = false"
+            :disabled="batchImportLoading"
+          >
+            取消
+          </button>
+          <button
+            class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            :disabled="!batchImportText.trim() || batchImportLoading"
+            @click="handleConfirmBatchImport"
+          >
+            {{ batchImportLoading ? '导入中...' : '一键导入' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </Transition>
   <AppToast :message="toastMsg" />
 </template>

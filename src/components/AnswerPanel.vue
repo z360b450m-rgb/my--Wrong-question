@@ -243,7 +243,7 @@ function onScreenshotCapture(dataUrl: string) {
     <div v-if="!showHidden" ref="wrapperRef" class="flex-1 relative group">
       <div
         ref="bodyRef"
-        class="panel-body w-full h-full px-3.5 py-3 overflow-y-auto text-sm leading-relaxed md-content outline-none text-gray-800 dark:text-gray-200"
+        class="panel-body w-full h-full px-3.5 py-3 overflow-y-auto text-base leading-relaxed md-content outline-none text-gray-800 dark:text-gray-200"
         contenteditable="true"
         :data-placeholder="'输入' + label + '…'"
         @input="onInput"
