@@ -171,12 +171,11 @@ function tx<T>(
 }
 
 const idbDb = {
-   
-  async getAll(_notebookId: string): Promise<NoteEntry[]> {
-    return tx('readonly', (s) => s.getAll())
+  async getAll(notebookId: string): Promise<NoteEntry[]> {
+    const all = await tx('readonly', (s) => s.getAll())
+    return notebookId ? all.filter((e: NoteEntry) => e.notebookId === notebookId) : all
   },
 
-   
   async get(_notebookId: string, id: string): Promise<NoteEntry | undefined> {
     return tx('readonly', (s) => s.get(id))
   },
@@ -185,19 +184,16 @@ const idbDb = {
     return tx('readwrite', (s) => s.put(entry)).then(() => undefined)
   },
 
-   
   async delete(_notebookId: string, id: string): Promise<void> {
     return tx('readwrite', (s) => s.delete(id)).then(() => undefined)
   },
 
-   
   async putSnapshot(_notebookId: string, entryId: string, data: NoteEntry): Promise<void> {
     return tx('readwrite', (s) => s.put({ entryId, data, savedAt: Date.now() }), SNAP_STORE).then(
       () => undefined,
     )
   },
 
-   
   async getSnapshot(
     _notebookId: string,
     entryId: string,
@@ -205,34 +201,29 @@ const idbDb = {
     return tx('readonly', (s) => s.get(entryId), SNAP_STORE)
   },
 
-   
   async getAllSnapshots(
-    _notebookId: string,
+    notebookId: string,
   ): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
-    return tx('readonly', (s) => s.getAll(), SNAP_STORE)
+    const all = await tx('readonly', (s) => s.getAll(), SNAP_STORE)
+    return notebookId ? all.filter((snap) => snap.data && snap.data.notebookId === notebookId) : all
   },
 
-   
   async deleteSnapshot(_notebookId: string, entryId: string): Promise<void> {
     return tx('readwrite', (s) => s.delete(entryId), SNAP_STORE).then(() => undefined)
   },
 
-   
   async deleteAllSnapshots(_notebookId: string): Promise<void> {
     return tx('readwrite', (s) => s.clear(), SNAP_STORE).then(() => undefined)
   },
 
-   
   async getAllReviewLogs(_notebookId: string): Promise<ReviewLog[]> {
     return tx('readonly', (s) => s.getAll(), REVIEW_LOG_STORE)
   },
 
-   
   async addReviewLog(_notebookId: string, log: ReviewLog): Promise<void> {
     return tx('readwrite', (s) => s.put(log), REVIEW_LOG_STORE).then(() => undefined)
   },
 
-   
   async deleteReviewLogsByEntry(_notebookId: string, entryId: string): Promise<void> {
     return openDB().then((db) => {
       return new Promise<void>((resolve, reject) => {
