@@ -8,10 +8,6 @@ function timestamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`
 }
 
-function genId(): string {
-  return 'cuoti_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
-}
-
 // Extract base64 <img> tags from HTML, replace with relative paths.
 // Returns modified HTML and an array of { filename, data: base64-string }.
 const IMG_RE = /<img[^>]+src="data:image\/(png|jpeg|jpg|gif|webp);base64,([^"]+)"/gi
@@ -91,7 +87,7 @@ export function useBackup(
       // Deep-clone and extract images
       const exportEntries = JSON.parse(JSON.stringify(entries)) as NoteEntry[]
       for (const entry of exportEntries) {
-        for (const field of ['wrongAnswer', 'correctAnswer'] as const) {
+        for (const field of ['question', 'wrongAnswer', 'correctAnswer'] as const) {
           const html = (entry as Record<string, string>)[field] || ''
           const { html: replaced, images } = extractImages(html)
           ;(entry as Record<string, string>)[field] = replaced
@@ -129,6 +125,10 @@ export function useBackup(
     input.onchange = async () => {
       const file = input.files?.[0]
       if (!file) return
+
+      const keepReviewState = window.confirm(
+        '是否保留原有的复习进度？\n\n[确定]：保留原有的熟练度和复习安排\n[取消]：重置为全新的未复习错题',
+      )
 
       try {
         const zip = await JSZip.loadAsync(file)
@@ -170,8 +170,8 @@ export function useBackup(
             continue
           }
 
-          // Restore images in answer fields
-          for (const field of ['wrongAnswer', 'correctAnswer'] as const) {
+          // Restore images in all rich-text fields
+          for (const field of ['question', 'wrongAnswer', 'correctAnswer'] as const) {
             if (item[field] && typeof item[field] === 'string' && item[field].includes('images/')) {
               item[field] = restoreImages(item[field], imageMap)
             }
@@ -179,17 +179,19 @@ export function useBackup(
 
           const sanitized: NoteEntry = {
             ...item,
-            id: genId(),
+            id: item.id,
             notebookId: getNotebookId() || item.notebookId || '',
             tags: Array.isArray(item.tags) ? item.tags : [],
             subject: item.subject || '',
             source: item.source || '',
             wrongAnswer: item.wrongAnswer || '',
             correctAnswer: item.correctAnswer || '',
-            masteryLevel: item.masteryLevel || 0,
-            consecutivePasses: item.consecutivePasses || 0,
+            masteryLevel: keepReviewState ? item.masteryLevel || 0 : 0,
+            consecutivePasses: keepReviewState ? item.consecutivePasses || 0 : 0,
+            nextReviewDate: keepReviewState ? item.nextReviewDate : undefined,
+            lastReviewDate: keepReviewState ? item.lastReviewDate : undefined,
             createdAt: item.createdAt || Date.now(),
-            updatedAt: item.updatedAt || Date.now(),
+            updatedAt: Date.now(),
           }
           await db.put(sanitized)
           imported++
@@ -200,7 +202,7 @@ export function useBackup(
         if (imported === 0) {
           onToast('导入失败：未识别到有效错题数据')
         } else {
-          let msg = `成功导入 ${imported} 条`
+          let msg = `成功导入 ${imported} 条` + (!keepReviewState ? ' (已重置进度)' : '')
           if (skipped > 0) msg += `，跳过 ${skipped} 条`
           onToast(msg)
         }

@@ -28,11 +28,13 @@ async function createNotebook(
   instructions: string,
 ): Promise<Notebook> {
   const now = Date.now()
+  const maxOrder = notebooks.value.reduce((max, n) => Math.max(max, n.sortOrder ?? 0), 0)
   const nb: Notebook = {
     id: genId(),
     name,
     description,
     instructions,
+    sortOrder: maxOrder + 1,
     createdAt: now,
     updatedAt: now,
   }
@@ -48,7 +50,8 @@ async function updateNotebook(
   const nb = notebooks.value.find((n) => n.id === id)
   if (!nb) return
   Object.assign(nb, partial, { updatedAt: Date.now() })
-  await db.putNotebook(nb)
+  // Spread to plain object — Vue reactive Proxy can't cross Electron IPC
+  await db.putNotebook({ ...nb })
 }
 
 async function deleteNotebook(id: string) {
@@ -94,12 +97,13 @@ async function reorderNotebooks(orderedIds: string[]) {
     if (nb) {
       nb.sortOrder = idx
       nb.updatedAt = now
-      updates.push(db.putNotebook(nb))
+      updates.push(db.putNotebook({ ...nb }))
     }
   })
   await Promise.all(updates)
-  // Re-sort the ref to reflect new order immediately
-  notebooks.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  // Trigger Vue reactivity by replacing the array reference.
+  // In-place .sort() on a reactive proxy may not reliably cause re-render.
+  notebooks.value = [...notebooks.value].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
 }
 
 // ===================================================================

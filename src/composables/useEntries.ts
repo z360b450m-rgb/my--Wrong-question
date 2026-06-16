@@ -382,6 +382,9 @@ export function useEntries() {
       }
     })
     await Promise.all(updates)
+    // Trigger Vue reactivity — entries are plain objects from IndexedDB,
+    // so in-place property mutations don't cause computed re-evaluation.
+    entries.value = [...entries.value]
   }
 
   return {

@@ -385,7 +385,7 @@ ipcMain.handle('storage:exportArchive', async () => {
 
     // Extract base64 images and replace with relative paths
     for (const entry of exportData.entries) {
-      for (const field of ['wrongAnswer', 'correctAnswer']) {
+      for (const field of ['question', 'wrongAnswer', 'correctAnswer']) {
         const html = entry[field] || ''
         const { html: replaced, images } = extractImages(html)
         entry[field] = replaced
@@ -434,6 +434,25 @@ ipcMain.handle('storage:importArchive', async () => {
   }
 
   const filePath = result.filePaths[0]
+
+  // Ask whether to keep review state
+  const confirmResult = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    title: '导入选项',
+    message: '是否保留原有的复习进度？',
+    detail:
+      '【保留进度】继承这些错题的熟练度、复习安排和历史记录。\n【重置为未复习】所有导入的错题将作为全新的错题，清除原有进度。',
+    buttons: ['保留复习进度', '重置为未复习', '取消导入'],
+    defaultId: 0,
+    cancelId: 2,
+  })
+
+  if (confirmResult.response === 2) {
+    return { success: false, message: '已取消导入' }
+  }
+
+  const keepReviewState = confirmResult.response === 0
+
   const tmpDir = path.join(getDataDir(), '.tmp_import')
 
   try {
@@ -461,8 +480,12 @@ ipcMain.handle('storage:importArchive', async () => {
     const imagesDir = path.join(tmpDir, 'images')
     if (fs.existsSync(imagesDir)) {
       for (const entry of importData.entries) {
-        for (const field of ['wrongAnswer', 'correctAnswer']) {
-          if (entry[field] && entry[field].includes('images/')) {
+        for (const field of ['question', 'wrongAnswer', 'correctAnswer']) {
+          if (
+            entry[field] &&
+            typeof entry[field] === 'string' &&
+            entry[field].includes('images/')
+          ) {
             entry[field] = restoreImages(entry[field], imagesDir)
           }
         }
@@ -475,35 +498,36 @@ ipcMain.handle('storage:importArchive', async () => {
     if (!currentData.notebooks) currentData.notebooks = []
     if (!currentData.reviewLogs) currentData.reviewLogs = []
 
-    // Merge notebooks (by id, skip duplicates)
-    const existingNbIds = new Set(currentData.notebooks.map((n) => n.id))
+    // Merge notebooks (overwrite existing)
     const importNb = importData.notebooks || []
     for (const nb of importNb) {
-      if (!existingNbIds.has(nb.id)) {
-        currentData.notebooks.push(nb)
-        existingNbIds.add(nb.id)
-      }
+      const idx = currentData.notebooks.findIndex((n) => n.id === nb.id)
+      if (idx >= 0) currentData.notebooks[idx] = nb
+      else currentData.notebooks.push(nb)
     }
 
-    // Merge entries (by id, skip duplicates)
-    const existingIds = new Set(currentData.entries.map((e) => e.id))
+    // Merge entries (overwrite existing)
     let importedCount = 0
     for (const entry of importData.entries) {
-      if (!existingIds.has(entry.id)) {
-        currentData.entries.push(entry)
-        existingIds.add(entry.id)
-        importedCount++
+      if (!keepReviewState) {
+        entry.masteryLevel = 0
+        entry.consecutivePasses = 0
+        delete entry.nextReviewDate
+        delete entry.lastReviewDate
       }
+      const idx = currentData.entries.findIndex((e) => e.id === entry.id)
+      if (idx >= 0) currentData.entries[idx] = entry
+      else currentData.entries.push(entry)
+      importedCount++
     }
 
-    // Merge review logs (by id, skip duplicates)
-    const existingLogIds = new Set(currentData.reviewLogs.map((l) => l.id))
-    const importLogs = importData.reviewLogs || []
+    // Merge review logs only when keeping review state
     let importedLogs = 0
-    for (const log of importLogs) {
-      if (!existingLogIds.has(log.id)) {
-        currentData.reviewLogs.push(log)
-        existingLogIds.add(log.id)
+    if (keepReviewState) {
+      for (const log of importData.reviewLogs || []) {
+        const idx = currentData.reviewLogs.findIndex((l) => l.id === log.id)
+        if (idx >= 0) currentData.reviewLogs[idx] = log
+        else currentData.reviewLogs.push(log)
         importedLogs++
       }
     }
@@ -513,7 +537,7 @@ ipcMain.handle('storage:importArchive', async () => {
 
     return {
       success: true,
-      message: `成功导入 ${importedCount} 条错题`,
+      message: `成功导入 ${importedCount} 条错题` + (!keepReviewState ? ' (已重置进度)' : ''),
       count: importedCount,
     }
   } catch (err) {
