@@ -517,7 +517,7 @@ onUnmounted(() => {
           <div class="relative h-full">
             <div
               ref="questionBody"
-              class="px-3.5 py-3 text-sm leading-relaxed md-content outline-none min-h-[60px] h-full"
+              class="px-3.5 py-3 text-base leading-relaxed md-content outline-none min-h-[60px] h-full"
               :contenteditable="drawingEnabled ? 'false' : 'true'"
               data-placeholder="在此输入题目内容…&#10;支持 Markdown 语法，Ctrl+V 粘贴图片"
               @input="onQuestionInput"

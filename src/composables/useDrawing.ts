@@ -17,6 +17,7 @@ export interface DrawingState {
   penColor: Ref<string>
   canUndo: Ref<boolean>
   canRedo: Ref<boolean>
+  currentEntryId: Ref<string | null>
   toggleDrawing: () => void
   setTool: (t: DrawTool) => void
   setColor: (c: string) => void
@@ -38,7 +39,7 @@ export interface DrawingState {
 // 绘图数据通过 memory Map 缓存, 保存时写入 entry.drawing 字段。
 // DrawingState 返回值类型必须向后兼容。
 // ===================================================================
-export function useDrawing(): DrawingState {
+export function useDrawing(onChange?: () => void): DrawingState {
   const drawingEnabled = ref(false)
   const activeTool = ref<DrawTool>('pen')
   const penColor = ref(PEN_COLORS[0].code)
@@ -51,7 +52,7 @@ export function useDrawing(): DrawingState {
 
   // Per-entry drawing store
   const drawingStore = new Map<string, string>()
-  let currentEntryId: string | null = null
+  const currentEntryId = ref<string | null>(null)
 
   // Undo/redo history
   const undoStack: string[] = []
@@ -99,6 +100,7 @@ export function useDrawing(): DrawingState {
     const prev = undoStack.pop()!
     await restoreSnapshot(prev)
     updateHistoryFlags()
+    onChange?.()
   }
 
   async function redo() {
@@ -107,6 +109,7 @@ export function useDrawing(): DrawingState {
     const next = redoStack.pop()!
     await restoreSnapshot(next)
     updateHistoryFlags()
+    onChange?.()
   }
 
   function resize() {
@@ -188,6 +191,7 @@ export function useDrawing(): DrawingState {
     if (!drawing) return
     drawing = false
     if (ctx) ctx.closePath()
+    onChange?.()
   }
 
   function onMouseDown(e: MouseEvent) {
@@ -280,14 +284,14 @@ export function useDrawing(): DrawingState {
 
   function loadDrawing(entryId: string) {
     if (!canvas) return
-    if (currentEntryId === entryId) return
+    if (currentEntryId.value === entryId) return
 
     // Save current drawing for the entry we're leaving
-    if (currentEntryId) {
-      drawingStore.set(currentEntryId, canvas.toDataURL())
+    if (currentEntryId.value) {
+      drawingStore.set(currentEntryId.value, canvas.toDataURL())
     }
 
-    currentEntryId = entryId
+    currentEntryId.value = entryId
 
     // Reset undo/redo for the new entry
     undoStack.length = 0
@@ -314,6 +318,7 @@ export function useDrawing(): DrawingState {
     saveSnapshot()
     const dpr = window.devicePixelRatio || 1
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr)
+    onChange?.()
   }
 
   function captureDrawing(): string | null {
@@ -366,6 +371,7 @@ export function useDrawing(): DrawingState {
     penColor,
     canUndo,
     canRedo,
+    currentEntryId,
     toggleDrawing,
     setTool,
     setColor,

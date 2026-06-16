@@ -206,18 +206,30 @@ const idbDb = {
   },
 
   deleteReviewLogsByEntry(entryId: string): Promise<void> {
-    return tx(
-      'readwrite',
-      (s) => {
-        const idx = s.index('entryId')
-        return idx.getAllKeys(entryId)
-      },
-      REVIEW_LOG_STORE,
-    ).then((keys) => {
-      const deletePromises = (keys as string[]).map((key) =>
-        tx('readwrite', (s2) => s2.delete(key), REVIEW_LOG_STORE),
-      )
-      return Promise.all(deletePromises).then(() => undefined)
+    return openDB().then((db) => {
+      return new Promise<void>((resolve, reject) => {
+        // 1. 开启单个读写事务
+        const t = db.transaction(REVIEW_LOG_STORE, 'readwrite')
+        const store = t.objectStore(REVIEW_LOG_STORE)
+        const idx = store.index('entryId')
+
+        // 2. 查询该 entryId 下所有的 key
+        const req = idx.getAllKeys(entryId)
+
+        req.onsuccess = () => {
+          const keys = req.result as string[]
+          // 3. 在同一个事务生命周期内，遍历并下发所有的删除指令
+          keys.forEach((key) => {
+            store.delete(key)
+          })
+        }
+
+        req.onerror = () => reject(req.error)
+
+        // 4. 监听整个事务的完成与失败状态
+        t.oncomplete = () => resolve()
+        t.onerror = () => reject(t.error)
+      })
     })
   },
 
@@ -237,6 +249,8 @@ const idbDb = {
 // ── Unified export ─────────────────────────────────────────────
 
 export const db = isElectron() ? fileDb : idbDb
+
+// ── Migration: IndexedDB → file storage ─────────────────────────
 
 // ── Migration: IndexedDB → file storage ─────────────────────────
 
@@ -263,9 +277,19 @@ export async function migrateFromIndexedDB(): Promise<number> {
   }
 
   try {
+    // 1. 从 IndexedDB 提取所有维度的数据
     const idbEntries = await idbDb.getAll()
-    if (idbEntries.length === 0) {
-      // No IDB data either — mark migrated so future starts skip IDB
+    const idbNotebooks = await idbDb.getAllNotebooks()
+    const idbReviewLogs = await idbDb.getAllReviewLogs()
+    const idbSnapshots = await idbDb.getAllSnapshots()
+
+    // 2. 如果所有表都是空的，说明完全没有历史数据，直接标记迁移完成
+    if (
+      idbEntries.length === 0 &&
+      idbNotebooks.length === 0 &&
+      idbReviewLogs.length === 0 &&
+      idbSnapshots.length === 0
+    ) {
       try {
         await window.electronAPI!.markIndexedDBMigrated()
       } catch {
@@ -273,16 +297,41 @@ export async function migrateFromIndexedDB(): Promise<number> {
       }
       return 0
     }
+
+    // 3. 逐个模块进行数据迁移写入 Electron 文件存储
+
+    // 迁移错题本 (Notebooks)
+    for (const notebook of idbNotebooks) {
+      await fileDb.putNotebook(notebook)
+    }
+
+    // 迁移错题主数据 (Entries)
     for (const entry of idbEntries) {
       await fileDb.put(entry)
     }
+
+    // 迁移复习历史日志 (Review Logs)
+    for (const log of idbReviewLogs) {
+      await fileDb.addReviewLog(log)
+    }
+
+    // 迁移历史快照 (Snapshots)
+    // 注意：fileDb.putSnapshot 的签名是 (entryId: string, data: NoteEntry)
+    for (const snap of idbSnapshots) {
+      await fileDb.putSnapshot(snap.entryId, snap.data)
+    }
+
+    // 4. 标记迁移成功
     try {
       await window.electronAPI!.markIndexedDBMigrated()
     } catch {
       /* ignore */
     }
+
+    // 返回迁移的核心条目数
     return idbEntries.length
-  } catch {
+  } catch (error) {
+    console.error('Migration from IndexedDB failed:', error)
     return 0
   }
 }

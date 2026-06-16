@@ -5,7 +5,7 @@ import { ref, watch, nextTick, onUnmounted, computed } from 'vue'
 import type { NoteEntry } from '@/types'
 import type { SessionRecord } from '@/composables/useReview'
 import { getMasteryColor, getMasteryLabel } from '@/composables/useStats'
-import { sanitizeHtml } from '@/utils/sanitize'
+import { sanitizeHtml, formatMcOptions } from '@/utils/sanitize'
 
 const props = defineProps<{
   entry: NoteEntry | undefined
@@ -37,16 +37,17 @@ const rated = ref(false)
 
 const sanitizedQuestion = computed(
   () =>
-    sanitizeHtml(props.entry?.question || '') || "<span class='text-gray-300'>无题目内容</span>",
+    sanitizeHtml(formatMcOptions(props.entry?.question || '')) ||
+    "<span class='text-gray-300'>无题目内容</span>",
 )
 const sanitizedWrongAnswer = computed(
   () =>
-    sanitizeHtml(props.entry?.wrongAnswer || '') ||
+    sanitizeHtml(formatMcOptions(props.entry?.wrongAnswer || '')) ||
     "<span class='text-gray-300 dark:text-[#4a4a48]'>无内容</span>",
 )
 const sanitizedCorrectAnswer = computed(
   () =>
-    sanitizeHtml(props.entry?.correctAnswer || '') ||
+    sanitizeHtml(formatMcOptions(props.entry?.correctAnswer || '')) ||
     "<span class='text-gray-300 dark:text-[#4a4a48]'>无内容</span>",
 )
 
@@ -338,7 +339,7 @@ function ratingColor(q: number | string): string {
         <div class="flex-1 overflow-y-auto">
           <div ref="questionContentRef" :style="{ position: 'relative', minHeight: '100%' }">
             <div
-              class="px-3.5 py-3 text-sm leading-relaxed md-content"
+              class="px-3.5 py-3 text-base leading-relaxed md-content"
               v-html="sanitizedQuestion"
             />
           </div>
@@ -377,7 +378,7 @@ function ratingColor(q: number | string): string {
         </div>
         <div
           v-if="!showCorrect"
-          class="flex-1 overflow-y-auto px-3.5 py-3 text-sm leading-relaxed md-content text-gray-800 dark:text-brand-light-gray"
+          class="flex-1 overflow-y-auto px-3.5 py-3 text-base leading-relaxed md-content text-gray-800 dark:text-brand-light-gray"
           v-html="sanitizedWrongAnswer"
         />
         <div v-else class="flex items-center justify-center py-4">
@@ -408,7 +409,7 @@ function ratingColor(q: number | string): string {
         </div>
         <div
           v-if="showCorrect"
-          class="flex-1 overflow-y-auto px-3.5 py-3 text-sm leading-relaxed md-content text-gray-800 dark:text-brand-light-gray"
+          class="flex-1 overflow-y-auto px-3.5 py-3 text-base leading-relaxed md-content text-gray-800 dark:text-brand-light-gray"
           v-html="sanitizedCorrectAnswer"
         />
         <div v-else class="flex items-center justify-center py-4">
