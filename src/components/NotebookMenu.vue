@@ -6,6 +6,7 @@ import { useNotebooks } from '@/composables/useNotebooks'
 import { useEntries } from '@/composables/useEntries'
 import { useReviewLogs } from '@/composables/useReviewLogs'
 import { useDarkMode } from '@/composables/useDarkMode'
+import { useModalAnimations } from '@/composables/useModalAnimations'
 
 const emit = defineEmits<{
   enter: [id: string]
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const { isDark } = useDarkMode()
+const { enterModal, leaveModal } = useModalAnimations()
 const { notebooks, createNotebook, updateNotebook, deleteNotebook, reorderNotebooks } =
   useNotebooks()
 const { entries, loadEntries } = useEntries()
@@ -663,157 +665,173 @@ function onNotebookClick(id: string) {
     </main>
 
     <!-- ═══════════ CREATE DIALOG ═══════════ -->
-    <div
-      v-if="showCreate"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/15"
-      @click.self="cancelCreate"
-    >
+    <Transition :css="false" @enter="enterModal" @leave="leaveModal">
       <div
-        class="bg-white dark:bg-[#1e1e1c] rounded-[12px] w-[420px] max-w-[92vw] p-6 border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50"
-        @click.stop
+        v-if="showCreate"
+        class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/15"
+        @click.self="cancelCreate"
       >
-        <h3 class="text-[15px] font-semibold text-brand-dark dark:text-brand-light mb-4">
-          新建错题本
-        </h3>
-        <div class="space-y-3">
-          <div>
-            <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid">名称</label>
-            <input
-              v-model="createName"
-              type="text"
-              placeholder="例如：数学错题本"
-              class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
-              @keydown.enter="confirmCreate"
-            />
+        <div
+          class="modal-dialog bg-white dark:bg-[#1e1e1c] rounded-[12px] w-[420px] max-w-[92vw] p-6 border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50"
+          @click.stop
+        >
+          <h3 class="text-[15px] font-semibold text-brand-dark dark:text-brand-light mb-4">
+            新建错题本
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid"
+                >名称</label
+              >
+              <input
+                v-model="createName"
+                type="text"
+                placeholder="例如：数学错题本"
+                class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
+                @keydown.enter="confirmCreate"
+              />
+            </div>
+            <div>
+              <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid"
+                >简介</label
+              >
+              <input
+                v-model="createDesc"
+                type="text"
+                placeholder="简短描述"
+                class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
+                @keydown.enter="confirmCreate"
+              />
+            </div>
           </div>
-          <div>
-            <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid">简介</label>
-            <input
-              v-model="createDesc"
-              type="text"
-              placeholder="简短描述"
-              class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
-              @keydown.enter="confirmCreate"
-            />
+          <div v-if="createErr" class="text-[12px] text-red-500 mt-2">{{ createErr }}</div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button
+              class="px-4 py-2 rounded-[8px] text-[13px] text-brand-dark dark:text-brand-mid border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50 hover:bg-[#e8e6dc] dark:hover:bg-[#2a2a28] transition-colors"
+              @click="cancelCreate"
+            >
+              取消
+            </button>
+            <button
+              class="px-4 py-2 rounded-[8px] text-[13px] bg-[#d97757] text-white font-medium hover:bg-[#c56a48] transition-colors disabled:opacity-40"
+              :disabled="!createName.trim()"
+              @click="confirmCreate"
+            >
+              创建
+            </button>
           </div>
-        </div>
-        <div v-if="createErr" class="text-[12px] text-red-500 mt-2">{{ createErr }}</div>
-        <div class="flex justify-end gap-2 mt-5">
-          <button
-            class="px-4 py-2 rounded-[8px] text-[13px] text-brand-dark dark:text-brand-mid border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50 hover:bg-[#e8e6dc] dark:hover:bg-[#2a2a28] transition-colors"
-            @click="cancelCreate"
-          >
-            取消
-          </button>
-          <button
-            class="px-4 py-2 rounded-[8px] text-[13px] bg-[#d97757] text-white font-medium hover:bg-[#c56a48] transition-colors disabled:opacity-40"
-            :disabled="!createName.trim()"
-            @click="confirmCreate"
-          >
-            创建
-          </button>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- ═══════════ EDIT DIALOG ═══════════ -->
-    <div
-      v-if="editingId"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/15"
-      @click.self="cancelEdit"
-    >
+    <Transition :css="false" @enter="enterModal" @leave="leaveModal">
       <div
-        class="bg-white dark:bg-[#1e1e1c] rounded-[12px] w-[420px] max-w-[92vw] p-6 border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50"
-        @click.stop
+        v-if="editingId"
+        class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/15"
+        @click.self="cancelEdit"
       >
-        <h3 class="text-[15px] font-semibold text-brand-dark dark:text-brand-light mb-4">
-          编辑错题本
-        </h3>
-        <div class="space-y-3">
-          <div>
-            <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid">名称</label>
-            <input
-              v-model="editName"
-              type="text"
-              class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
-              @keydown.enter="confirmEdit"
-            />
+        <div
+          class="modal-dialog bg-white dark:bg-[#1e1e1c] rounded-[12px] w-[420px] max-w-[92vw] p-6 border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50"
+          @click.stop
+        >
+          <h3 class="text-[15px] font-semibold text-brand-dark dark:text-brand-light mb-4">
+            编辑错题本
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid"
+                >名称</label
+              >
+              <input
+                v-model="editName"
+                type="text"
+                class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
+                @keydown.enter="confirmEdit"
+              />
+            </div>
+            <div>
+              <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid"
+                >简介</label
+              >
+              <input
+                v-model="editDesc"
+                type="text"
+                class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
+                @keydown.enter="confirmEdit"
+              />
+            </div>
           </div>
-          <div>
-            <label class="text-[12px] font-medium text-brand-dark dark:text-brand-mid">简介</label>
-            <input
-              v-model="editDesc"
-              type="text"
-              class="w-full mt-1 px-3 py-2 rounded-[8px] border border-[#e8e6dc] dark:border-[#2e2e2c] text-[13px] text-brand-dark dark:text-brand-light bg-white dark:bg-[#1e1e1c] outline-none focus:border-[#d97757] transition-colors"
-              @keydown.enter="confirmEdit"
-            />
+          <div class="flex justify-end gap-2 mt-5">
+            <button
+              class="px-4 py-2 rounded-[8px] text-[13px] text-brand-dark dark:text-brand-mid border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50 hover:bg-[#e8e6dc] dark:hover:bg-[#2a2a28] transition-colors"
+              @click="cancelEdit"
+            >
+              取消
+            </button>
+            <button
+              class="px-4 py-2 rounded-[8px] text-[13px] bg-[#d97757] text-white font-medium hover:bg-[#c56a48] transition-colors"
+              @click="confirmEdit"
+            >
+              保存
+            </button>
           </div>
-        </div>
-        <div class="flex justify-end gap-2 mt-5">
-          <button
-            class="px-4 py-2 rounded-[8px] text-[13px] text-brand-dark dark:text-brand-mid border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50 hover:bg-[#e8e6dc] dark:hover:bg-[#2a2a28] transition-colors"
-            @click="cancelEdit"
-          >
-            取消
-          </button>
-          <button
-            class="px-4 py-2 rounded-[8px] text-[13px] bg-[#d97757] text-white font-medium hover:bg-[#c56a48] transition-colors"
-            @click="confirmEdit"
-          >
-            保存
-          </button>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- ═══════════ DELETE CONFIRMATION ═══════════ -->
-    <div
-      v-if="deletingId"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/15"
-      @click.self="cancelDelete"
-    >
+    <Transition :css="false" @enter="enterModal" @leave="leaveModal">
       <div
-        class="bg-white dark:bg-[#1e1e1c] rounded-[12px] w-[380px] max-w-[92vw] p-6 border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50"
-        @click.stop
+        v-if="deletingId"
+        class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/15"
+        @click.self="cancelDelete"
       >
-        <div class="flex items-center gap-2.5 mb-4">
-          <div
-            class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0"
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#ef4444"
-              stroke-width="2.5"
+        <div
+          class="modal-dialog bg-white dark:bg-[#1e1e1c] rounded-[12px] w-[380px] max-w-[92vw] p-6 border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50"
+          @click.stop
+        >
+          <div class="flex items-center gap-2.5 mb-4">
+            <div
+              class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0"
             >
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-            </svg>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#ef4444"
+                stroke-width="2.5"
+              >
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-[14px] font-bold text-brand-dark dark:text-brand-light">
+                删除错题本
+              </h3>
+              <p class="text-[12px] text-brand-mid dark:text-brand-mid mt-0.5">
+                将同时删除本错题本内的所有题目及复习记录，此操作不可撤销。
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 class="text-[14px] font-bold text-brand-dark dark:text-brand-light">删除错题本</h3>
-            <p class="text-[12px] text-brand-mid dark:text-brand-mid mt-0.5">
-              将同时删除本错题本内的所有题目及复习记录，此操作不可撤销。
-            </p>
+          <div class="flex justify-end gap-2">
+            <button
+              class="px-4 py-2 rounded-[8px] text-[13px] font-medium border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50 text-brand-dark dark:text-brand-mid hover:bg-[#e8e6dc] dark:hover:bg-[#2a2a28] transition-colors"
+              @click="cancelDelete"
+            >
+              取消
+            </button>
+            <button
+              class="px-4 py-2 rounded-[8px] text-[13px] font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
+              @click="confirmDelete"
+            >
+              确认删除
+            </button>
           </div>
-        </div>
-        <div class="flex justify-end gap-2">
-          <button
-            class="px-4 py-2 rounded-[8px] text-[13px] font-medium border border-[#e8e6dc]/50 dark:border-[#2e2e2c]/50 text-brand-dark dark:text-brand-mid hover:bg-[#e8e6dc] dark:hover:bg-[#2a2a28] transition-colors"
-            @click="cancelDelete"
-          >
-            取消
-          </button>
-          <button
-            class="px-4 py-2 rounded-[8px] text-[13px] font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
-            @click="confirmDelete"
-          >
-            确认删除
-          </button>
         </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>

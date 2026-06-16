@@ -336,7 +336,7 @@ function ratingColor(q: number | string): string {
           >
         </div>
         <div class="flex-1 overflow-y-auto">
-          <div ref="questionContentRef" style="position: relative; min-height: 100%">
+          <div ref="questionContentRef" :style="{ position: 'relative', minHeight: '100%' }">
             <div
               class="px-3.5 py-3 text-sm leading-relaxed md-content"
               v-html="sanitizedQuestion"
