@@ -127,6 +127,7 @@ export interface SessionRecord {
 export function useReview(
   entries: Ref<NoteEntry[]>,
   showToast?: (msg: string) => void,
+  getNotebookId?: () => string,
 ): ReviewState {
   const mode = ref<'edit' | 'review'>('edit')
   const reviewIndex = ref(0)
@@ -138,7 +139,7 @@ export function useReview(
   let timerInterval: ReturnType<typeof setInterval> | null = null
   let clockInterval: ReturnType<typeof setInterval> | null = null
 
-  const { addLog, loadLogs } = useReviewLogs()
+  const { addLog, loadLogs } = useReviewLogs(getNotebookId || (() => ''))
   loadLogs()
 
   const { settings } = useReviewSettings()

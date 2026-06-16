@@ -15,10 +15,10 @@ const reviewLogs = ref<ReviewLog[]>([])
 // 间共享。日志加载/添加/删除均通过 db 统一导出操作。
 // 返回值类型签名必须向后兼容。
 // ===================================================================
-export function useReviewLogs() {
+export function useReviewLogs(getNotebookId: () => string) {
   async function loadLogs() {
     try {
-      reviewLogs.value = await db.getAllReviewLogs()
+      reviewLogs.value = await db.getAllReviewLogs(getNotebookId())
     } catch {
       reviewLogs.value = []
     }
@@ -32,7 +32,7 @@ export function useReviewLogs() {
       quality,
     }
     try {
-      await db.addReviewLog(log)
+      await db.addReviewLog(getNotebookId(), log)
     } catch (err) {
       console.error('Failed to save review log', err)
     }
@@ -41,7 +41,7 @@ export function useReviewLogs() {
 
   async function deleteLogsByEntry(entryId: string) {
     try {
-      await db.deleteReviewLogsByEntry(entryId)
+      await db.deleteReviewLogsByEntry(getNotebookId(), entryId)
     } catch (err) {
       console.error('Failed to delete review logs', err)
     }

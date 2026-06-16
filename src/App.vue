@@ -18,11 +18,12 @@ import { useDarkMode } from './composables/useDarkMode'
 import { parsePastedText } from './utils/parsePastedText'
 import { parsePdfFile } from './utils/parsePdf'
 import type { PdfParseProgress } from './utils/parsePdf'
-import { db } from './services/db'
+import { db, setCurrentNotebookId } from './services/db'
 import Workspace from './components/Workspace.vue'
 import NotebookMenu from './components/NotebookMenu.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import PdfReviewPanel from './components/PdfReviewPanel.vue'
+import ImportOptionsModal from './components/ImportOptionsModal.vue'
 import AppToast from './components/AppToast.vue'
 
 const {
@@ -109,7 +110,7 @@ const {
   exitReview,
   dismissSummary,
   loadLogs,
-} = useReview(notebookEntries, showToast)
+} = useReview(notebookEntries, showToast, () => activeNotebookId.value ?? '')
 
 useReviewSettings()
 
@@ -134,12 +135,20 @@ const {
   setStoredDrawing,
 } = useDrawing(markDirty)
 
-const { exportData, importData } = useBackup(
+const { exportData, importData, importModalVisible, handleImportOption } = useBackup(
   () => notebookEntries.value,
   () => activeNotebookId.value ?? '',
   loadEntries,
   showToast,
 )
+
+async function handleImportArchive() {
+  await importData()
+  await loadNotebooks()
+  setSubject('')
+  setTag(null)
+  setSearch('')
+}
 const { exportPDF } = useExport(showToast)
 const { isDark, toggleDark } = useDarkMode()
 
@@ -157,6 +166,7 @@ const pendingForceReview = ref(false)
 
 async function handleEnterNotebook(id: string) {
   selectNotebook(id)
+  setCurrentNotebookId(id)
   showNotebookMenu.value = false
   await loadEntries()
   await loadLogs()
@@ -189,6 +199,7 @@ onMounted(async () => {
   const lastId = restoreLastNotebook()
   if (lastId && notebooks.value.some((n) => n.id === lastId)) {
     selectNotebook(lastId)
+    setCurrentNotebookId(lastId)
     showNotebookMenu.value = false
     await loadEntries()
     await loadLogs()
@@ -317,6 +328,9 @@ async function handleConfirmBatchImport() {
       await db.put(JSON.parse(JSON.stringify(entry)))
     }
     await loadEntries()
+    setSubject('')
+    setTag(null)
+    setSearch('')
     showToast(`已导入 ${parsed.length} 道错题`)
     showBatchImport.value = false
   } catch (err) {
@@ -400,6 +414,9 @@ async function handleConfirmPdfReview(reviewedEntries: Partial<NoteEntry>[]) {
       await db.put(JSON.parse(JSON.stringify(entry)))
     }
     await loadEntries()
+    setSubject('')
+    setTag(null)
+    setSearch('')
     showToast(`已导入 ${reviewedEntries.length} 道错题`)
     showPdfReview.value = false
     pdfParsedPreview.value = []
@@ -678,7 +695,7 @@ watch(activeId, (_newId) => {
       @batch-export="handleBatchExport"
       @export-json="exportData"
       @export-pdf="handleExportPDF"
-      @import-json="importData"
+      @import-json="handleImportArchive"
       @import-text="handleOpenBatchImport"
       @import-pdf="handleOpenPdfImport"
       @toggle-stats="statsOpen = !statsOpen"
@@ -894,5 +911,11 @@ watch(activeId, (_newId) => {
     @cancel="handleCancelPdfReview"
   />
 
+  <ImportOptionsModal
+    :visible="importModalVisible"
+    @keep="handleImportOption(true)"
+    @reset="handleImportOption(false)"
+    @cancel="handleImportOption(null)"
+  />
   <AppToast :message="toastMsg" />
 </template>

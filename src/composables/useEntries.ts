@@ -51,11 +51,7 @@ export function useEntries() {
   const { settings } = useReviewSettings()
   const { activeId: notebookId } = useNotebooks()
 
-  const notebookEntries = computed(() =>
-    notebookId.value
-      ? entries.value.filter((e) => e.notebookId === notebookId.value)
-      : entries.value,
-  )
+  const notebookEntries = computed(() => entries.value)
 
   const activeEntry = computed<NoteEntry | undefined>(() =>
     entries.value.find((e) => e.id === activeId.value),
@@ -104,8 +100,8 @@ export function useEntries() {
   // Batch delete
   async function batchDelete(ids: string[]) {
     for (const id of ids) {
-      await db.delete(id)
-      await db.deleteSnapshot(id)
+      await db.delete(notebookId.value, id)
+      await db.deleteSnapshot(notebookId.value, id)
     }
     const idSet = new Set(ids)
     entries.value = entries.value.filter((e) => !idSet.has(e.id))
@@ -158,7 +154,7 @@ export function useEntries() {
     snapshotTimer = setInterval(() => {
       if (isDirty.value && activeId.value) {
         const entry = entries.value.find((e) => e.id === activeId.value)
-        if (entry) db.putSnapshot(activeId.value, toPlain(entry))
+        if (entry) db.putSnapshot(notebookId.value, activeId.value, toPlain(entry))
       }
     }, 1000)
   }
@@ -172,7 +168,7 @@ export function useEntries() {
   async function loadEntries() {
     const seq = ++loadSeq
     try {
-      const result = await db.getAll()
+      const result = await db.getAll(notebookId.value)
       if (seq === loadSeq) {
         entries.value = result
       }
@@ -185,7 +181,7 @@ export function useEntries() {
 
   async function checkCrashRecovery(): Promise<NoteEntry[]> {
     try {
-      const snaps = await db.getAllSnapshots()
+      const snaps = await db.getAllSnapshots(notebookId.value)
       if (snaps.length === 0) return []
       const recovered: NoteEntry[] = []
       for (const snap of snaps) {
@@ -201,7 +197,7 @@ export function useEntries() {
           recovered.push(snap.data)
         }
       }
-      await db.deleteAllSnapshots()
+      await db.deleteAllSnapshots(notebookId.value)
       return recovered
     } catch {
       return []
@@ -292,7 +288,7 @@ export function useEntries() {
       return
     }
     try {
-      await db.deleteSnapshot(activeId.value)
+      await db.deleteSnapshot(notebookId.value, activeId.value)
     } catch {
       /* ok if missing */
     }
@@ -303,12 +299,12 @@ export function useEntries() {
   // Discard changes — reload from DB
   async function discardChanges() {
     if (!activeId.value) return
-    const saved = await db.get(activeId.value)
+    const saved = await db.get(notebookId.value, activeId.value)
     if (saved) {
       const idx = entries.value.findIndex((e) => e.id === activeId.value)
       if (idx !== -1) entries.value[idx] = saved
     }
-    await db.deleteSnapshot(activeId.value)
+    await db.deleteSnapshot(notebookId.value, activeId.value)
     isDirty.value = false
   }
 
@@ -319,7 +315,7 @@ export function useEntries() {
     if (entry) {
       entry.updatedAt = Date.now()
       try {
-        await db.putSnapshot(activeId.value, toPlain(entry))
+        await db.putSnapshot(notebookId.value, activeId.value, toPlain(entry))
       } catch {
         /* ignore */
       }
@@ -328,8 +324,8 @@ export function useEntries() {
 
   async function deleteCurrent() {
     if (!activeId.value) return
-    await db.delete(activeId.value)
-    await db.deleteSnapshot(activeId.value)
+    await db.delete(notebookId.value, activeId.value)
+    await db.deleteSnapshot(notebookId.value, activeId.value)
     entries.value = entries.value.filter((e) => e.id !== activeId.value)
     activeId.value = null
     isDirty.value = false

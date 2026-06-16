@@ -17,7 +17,6 @@ export default [
       '.vs/**',
       '*.min.js',
       '*.min.css',
-      '**/*.d.ts',
     ],
   },
 
