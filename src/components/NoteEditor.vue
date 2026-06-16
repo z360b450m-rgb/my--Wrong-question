@@ -6,6 +6,8 @@ import type { NoteEntry } from '@/types'
 import { useReviewLogs } from '@/composables/useReviewLogs'
 import CameraCapture from './CameraCapture.vue'
 import ScreenshotPicker from './ScreenshotPicker.vue'
+import ImageCropper from './ImageCropper.vue'
+import ImageFilterModal from './ImageFilterModal.vue'
 import AnswerPanel from './AnswerPanel.vue'
 
 const props = defineProps<{
@@ -79,24 +81,7 @@ function onQuestionPaste(e: ClipboardEvent) {
       if (!blob) continue
       const reader = new FileReader()
       reader.onload = () => {
-        const img = document.createElement('img')
-        img.src = reader.result as string
-        img.style.maxWidth = '100%'
-        img.style.borderRadius = '6px'
-        const sel = window.getSelection()
-        if (!sel) return
-        const range = sel.getRangeAt(0)
-        range.deleteContents()
-        range.insertNode(img)
-        range.collapse(false)
-        const br = document.createElement('br')
-        range.insertNode(br)
-        range.setStartAfter(br)
-        range.collapse(true)
-        sel.removeAllRanges()
-        sel.addRange(range)
-        questionBody.value?.focus()
-        onQuestionInput()
+        startPipeline(reader.result as string)
       }
       reader.readAsDataURL(blob)
       break
@@ -109,7 +94,16 @@ const qCamOpen = ref(false)
 const qScreenshotOpen = ref(false)
 const qFileInput = ref<HTMLInputElement | null>(null)
 
-function insertQuestionImage(src: string) {
+// Image pipeline: crop → filter → insert
+const pipelineStage = ref<'none' | 'crop' | 'filter'>('none')
+const pipelineSrc = ref('')
+
+function startPipeline(src: string) {
+  pipelineSrc.value = src
+  pipelineStage.value = 'crop'
+}
+
+function doInsertImage(src: string) {
   const el = questionBody.value
   if (!el) return
   el.focus()
@@ -136,6 +130,43 @@ function insertQuestionImage(src: string) {
     el.appendChild(document.createElement('br'))
   }
   onQuestionInput()
+}
+
+// --- Crop stage ---
+function onCropConfirm(croppedSrc: string) {
+  pipelineSrc.value = croppedSrc
+  pipelineStage.value = 'filter'
+}
+
+function onCropSkip() {
+  pipelineStage.value = 'filter'
+}
+
+function onCropCancel() {
+  pipelineStage.value = 'none'
+  pipelineSrc.value = ''
+}
+
+// --- Filter stage ---
+function onFilterConfirm(filteredSrc: string, _threshold: number) {
+  pipelineStage.value = 'none'
+  doInsertImage(filteredSrc)
+  pipelineSrc.value = ''
+}
+
+function onFilterSkip() {
+  pipelineStage.value = 'none'
+  doInsertImage(pipelineSrc.value)
+  pipelineSrc.value = ''
+}
+
+function onFilterCancel() {
+  pipelineStage.value = 'none'
+  pipelineSrc.value = ''
+}
+
+function insertQuestionImage(src: string) {
+  startPipeline(src)
 }
 
 function onQuestionDragOver(e: DragEvent) {
@@ -176,7 +207,9 @@ function onQuestionCamCapture(dataUrl: string) {
 
 function onQuestionScreenshotCapture(dataUrl: string) {
   qScreenshotOpen.value = false
-  insertQuestionImage(dataUrl)
+  // ScreenshotPicker already has its own crop, go straight to filter
+  pipelineSrc.value = dataUrl
+  pipelineStage.value = 'filter'
 }
 
 const drawingEnabled = inject<Ref<boolean>>('drawingEnabled', ref(false))
@@ -591,6 +624,22 @@ onUnmounted(() => {
       v-if="qScreenshotOpen"
       @capture="onQuestionScreenshotCapture"
       @close="qScreenshotOpen = false"
+    />
+
+    <ImageCropper
+      v-if="pipelineStage === 'crop'"
+      :image-src="pipelineSrc"
+      @crop="onCropConfirm"
+      @skip="onCropSkip"
+      @cancel="onCropCancel"
+    />
+
+    <ImageFilterModal
+      v-if="pipelineStage === 'filter'"
+      :image-src="pipelineSrc"
+      @confirm="onFilterConfirm"
+      @skip="onFilterSkip"
+      @cancel="onFilterCancel"
     />
   </div>
 </template>

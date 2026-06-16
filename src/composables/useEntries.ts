@@ -235,6 +235,34 @@ export function useEntries() {
     showToast('新错题已创建')
   }
 
+  async function createEntryFromDocument(documentBase64: string, preselectSubject?: string) {
+    if (!notebookId.value) return
+    const entry: NoteEntry = {
+      id: genId(),
+      notebookId: notebookId.value,
+      title: '文档扫描 ' + new Date().toLocaleTimeString(),
+      question: '',
+      wrongAnswer: '',
+      correctAnswer: '',
+      subject: preselectSubject || '',
+      source: '文档扫描',
+      tags: [],
+      masteryLevel: 0,
+      consecutivePasses: 0,
+      nextReviewDate: Date.now() + settings.value.firstReviewDays * 86400000,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      drawing: documentBase64,
+    }
+    await db.put(toPlain(entry))
+    entries.value.unshift(entry)
+    activeId.value = entry.id
+    answersHidden.value = false
+    isDirty.value = false
+    startSnapshotTimer()
+    showToast('文档扫描已保存')
+  }
+
   function loadEntry(id: string) {
     activeId.value = id
   }
@@ -354,6 +382,9 @@ export function useEntries() {
       }
     })
     await Promise.all(updates)
+    // Trigger Vue reactivity — entries are plain objects from IndexedDB,
+    // so in-place property mutations don't cause computed re-evaluation.
+    entries.value = [...entries.value]
   }
 
   return {
@@ -370,6 +401,7 @@ export function useEntries() {
     loadEntries,
     checkCrashRecovery,
     createEntry,
+    createEntryFromDocument,
     loadEntry,
     markDirty,
     saveEntry,
