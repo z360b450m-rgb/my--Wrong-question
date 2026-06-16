@@ -31,3 +31,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# --- 开发调试临时文件 ---
+*_enter.*
+*_test.*
+*_state.*
+fix_test.*
+debug.png
