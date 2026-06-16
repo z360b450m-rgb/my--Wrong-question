@@ -16,10 +16,13 @@ import { useStats } from './composables/useStats'
 import { useKeyboard } from './composables/useKeyboard'
 import { useDarkMode } from './composables/useDarkMode'
 import { parsePastedText } from './utils/parsePastedText'
+import { parsePdfFile } from './utils/parsePdf'
+import type { PdfParseProgress } from './utils/parsePdf'
 import { db } from './services/db'
 import Workspace from './components/Workspace.vue'
 import NotebookMenu from './components/NotebookMenu.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
+import PdfReviewPanel from './components/PdfReviewPanel.vue'
 import AppToast from './components/AppToast.vue'
 
 const {
@@ -324,6 +327,95 @@ async function handleConfirmBatchImport() {
   }
 }
 
+// PDF import
+const showPdfImport = ref(false)
+const pdfFile = ref<File | null>(null)
+const pdfImportLoading = ref(false)
+const pdfProgress = ref<PdfParseProgress>({ current: 0, total: 0 })
+const pdfParsedPreview = ref<Partial<NoteEntry>[]>([])
+const pdfError = ref('')
+const showPdfReview = ref(false)
+
+function handleOpenPdfImport() {
+  pdfFile.value = null
+  pdfImportLoading.value = false
+  pdfProgress.value = { current: 0, total: 0 }
+  pdfParsedPreview.value = []
+  pdfError.value = ''
+  showPdfImport.value = true
+}
+
+async function handlePdfFileSelected(file: File) {
+  if (!activeNotebookId.value) return
+
+  pdfFile.value = file
+  pdfImportLoading.value = true
+  pdfError.value = ''
+  pdfParsedPreview.value = []
+
+  try {
+    const parsed = await parsePdfFile(file, activeNotebookId.value, (p) => {
+      pdfProgress.value = p
+    })
+    pdfParsedPreview.value = parsed
+    if (parsed.length === 0) {
+      pdfError.value = '未能从此 PDF 中解析出题目，请确认 PDF 中包含带序号的题目文本。'
+    } else {
+      // Open review panel on success
+      showPdfImport.value = false
+      showPdfReview.value = true
+    }
+  } catch (err: unknown) {
+    pdfError.value =
+      (err instanceof Error ? err.message : undefined) || 'PDF 解析失败，请确认文件格式正确'
+  } finally {
+    pdfImportLoading.value = false
+  }
+}
+
+async function handleConfirmPdfReview(reviewedEntries: Partial<NoteEntry>[]) {
+  if (!activeNotebookId.value || reviewedEntries.length === 0) return
+
+  pdfImportLoading.value = true
+  try {
+    const now = Date.now()
+    for (let i = 0; i < reviewedEntries.length; i++) {
+      const item = reviewedEntries[i]
+      const entry = {
+        id: 'cuoti_' + now + '_' + Math.random().toString(36).slice(2, 7) + '_' + i,
+        notebookId: activeNotebookId.value,
+        title: (item.question || '').replace(/<[^>]*>/g, '').slice(0, 40),
+        question: item.question || '',
+        wrongAnswer: item.wrongAnswer || '',
+        correctAnswer: item.correctAnswer || '',
+        subject: item.subject || '未分类',
+        source: 'PDF导入',
+        tags: item.tags || [],
+        masteryLevel: 0,
+        consecutivePasses: 0,
+        nextReviewDate: 0,
+        createdAt: now + i,
+        updatedAt: now + i,
+      }
+      await db.put(JSON.parse(JSON.stringify(entry)))
+    }
+    await loadEntries()
+    showToast(`已导入 ${reviewedEntries.length} 道错题`)
+    showPdfReview.value = false
+    pdfParsedPreview.value = []
+  } catch (err) {
+    console.error('PDF import failed:', err)
+    showToast('导入失败，请重试')
+  } finally {
+    pdfImportLoading.value = false
+  }
+}
+
+function handleCancelPdfReview() {
+  showPdfReview.value = false
+  pdfParsedPreview.value = []
+}
+
 // Batch actions
 const showBatchDeleteConfirm = ref(false)
 
@@ -588,6 +680,7 @@ watch(activeId, (_newId) => {
       @export-pdf="handleExportPDF"
       @import-json="importData"
       @import-text="handleOpenBatchImport"
+      @import-pdf="handleOpenPdfImport"
       @toggle-stats="statsOpen = !statsOpen"
       @toggle-settings="settingsOpen = !settingsOpen"
       @toggle-dark="toggleDark"
@@ -649,5 +742,157 @@ watch(activeId, (_newId) => {
       </div>
     </div>
   </Transition>
+
+  <!-- PDF import modal -->
+  <Transition name="stats">
+    <div
+      v-if="showPdfImport"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+      @click.self="!pdfImportLoading && (showPdfImport = false)"
+    >
+      <div
+        class="bg-white dark:bg-[#1e1e1c] rounded-2xl shadow-xl border border-gray-200 dark:border-[#2e2e2c] w-full max-w-lg mx-4 p-6"
+      >
+        <h2 class="text-[15px] font-semibold text-gray-800 dark:text-brand-light-gray mb-1">
+          导入 PDF 错题
+        </h2>
+        <p class="text-[12px] text-gray-400 dark:text-brand-mid mb-4">
+          选择 PDF 文件，自动提取文本并按题号切割。仅支持文字型 PDF，扫描件需先用 OCR 识别。
+        </p>
+
+        <!-- File drop zone -->
+        <label
+          class="flex flex-col items-center justify-center gap-2 h-36 rounded-xl border-2 border-dashed cursor-pointer transition-colors"
+          :class="[
+            pdfFile
+              ? 'border-accent/40 bg-accent/5'
+              : 'border-gray-200 dark:border-[#2e2e2c] hover:border-accent/30 hover:bg-accent/5',
+            pdfImportLoading ? 'pointer-events-none opacity-50' : '',
+          ]"
+        >
+          <input
+            type="file"
+            accept=".pdf"
+            class="hidden"
+            :disabled="pdfImportLoading"
+            @change="
+              (e) => {
+                const f = (e.target as HTMLInputElement).files?.[0]
+                if (f) handlePdfFileSelected(f)
+              }
+            "
+          />
+          <template v-if="!pdfFile">
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              class="text-gray-300 dark:text-brand-mid"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="12" y2="12" />
+              <line x1="15" y1="15" x2="12" y2="12" />
+            </svg>
+            <span class="text-[13px] text-gray-400 dark:text-brand-mid"> 点击选择 PDF 文件 </span>
+          </template>
+          <template v-else>
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              class="text-accent"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span class="text-[13px] font-medium text-gray-700 dark:text-brand-light-gray">
+              {{ pdfFile.name }}
+            </span>
+            <span class="text-[11px] text-gray-400 dark:text-brand-mid">
+              {{ (pdfFile.size / 1024).toFixed(0) }} KB
+            </span>
+            <button
+              v-if="!pdfImportLoading && pdfParsedPreview.length === 0 && !pdfError"
+              class="text-[11px] text-accent hover:underline"
+              @click.prevent="pdfFile = null"
+            >
+              重新选择
+            </button>
+          </template>
+        </label>
+
+        <!-- Progress -->
+        <div
+          v-if="pdfImportLoading"
+          class="mt-4 flex items-center gap-2 text-[12px] text-gray-500 dark:text-brand-mid"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="animate-spin"
+          >
+            <line x1="12" y1="2" x2="12" y2="6" />
+            <line x1="12" y1="18" x2="12" y2="22" />
+            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+            <line x1="2" y1="12" x2="6" y2="12" />
+            <line x1="18" y1="12" x2="22" y2="12" />
+            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+          </svg>
+          正在解析第 {{ pdfProgress.current }} / {{ pdfProgress.total }} 页...
+        </div>
+
+        <!-- Error -->
+        <div
+          v-if="pdfError"
+          class="mt-4 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/30 text-[12px] text-red-600 dark:text-red-300"
+        >
+          {{ pdfError }}
+        </div>
+
+        <!-- Preview -->
+        <div
+          v-if="pdfParsedPreview.length > 0"
+          class="mt-4 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/20 text-[12px] text-green-700 dark:text-green-300"
+        >
+          已解析出 {{ pdfParsedPreview.length }} 道题目，正在打开校对界面...
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-end gap-2 mt-4">
+          <button
+            class="px-4 py-1.5 text-[12px] rounded-lg text-gray-500 dark:text-brand-mid hover:bg-gray-100 dark:hover:bg-[#2a2a28] transition-colors"
+            :disabled="pdfImportLoading"
+            @click="showPdfImport = false"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- PDF review panel -->
+  <PdfReviewPanel
+    v-if="showPdfReview"
+    :entries="pdfParsedPreview"
+    :loading="pdfImportLoading"
+    @confirm="handleConfirmPdfReview"
+    @cancel="handleCancelPdfReview"
+  />
+
   <AppToast :message="toastMsg" />
 </template>

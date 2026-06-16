@@ -20,7 +20,9 @@ export function parsePastedText(rawText: string, notebookId: string): Partial<No
       questionText = block.trim()
     }
 
-    if (questionText) {
+    // 必须以题号开头才算有效题目
+    const startsWithNumber = /^\s*(?:\d+[、.)）]|\(\d+\)|【\d+】|第\d+题)/
+    if (questionText && startsWithNumber.test(questionText)) {
       entries.push({
         notebookId,
         question: questionText,

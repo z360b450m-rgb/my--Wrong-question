@@ -32,6 +32,7 @@ const emit = defineEmits<{
   'export-pdf': []
   'import-json': []
   'import-text': []
+  'import-pdf': []
 }>()
 
 const moreMenuOpen = ref(false)
@@ -53,11 +54,14 @@ onUnmounted(() => {
   observer?.disconnect()
 })
 
-function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'import-text' | 'delete') {
+function moreAction(
+  action: 'export-json' | 'export-pdf' | 'import' | 'import-text' | 'import-pdf' | 'delete',
+) {
   if (action === 'export-json') emit('export-json')
   else if (action === 'export-pdf') emit('export-pdf')
   else if (action === 'import') emit('import-json')
   else if (action === 'import-text') emit('import-text')
+  else if (action === 'import-pdf') emit('import-pdf')
   else if (action === 'delete') emit('delete')
   moreMenuOpen.value = false
 }
@@ -480,6 +484,26 @@ function moreAction(action: 'export-json' | 'export-pdf' | 'import' | 'import-te
               <line x1="10" y1="9" x2="8" y2="9" />
             </svg>
             导入文本
+          </button>
+          <button
+            class="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-left text-gray-600 dark:text-brand-light-gray hover:bg-gray-50 dark:hover:bg-[#2a2a28] transition-all duration-200 ease-out active:scale-95"
+            @click="moreAction('import-pdf')"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="12" y2="12" />
+              <line x1="15" y1="15" x2="12" y2="12" />
+            </svg>
+            导入 PDF
           </button>
           <div class="border-t border-gray-100 dark:border-[#2e2e2c] my-1" />
           <button

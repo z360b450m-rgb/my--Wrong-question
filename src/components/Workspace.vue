@@ -129,6 +129,7 @@ const emit = defineEmits<{
   'export-pdf': []
   'import-json': []
   'import-text': []
+  'import-pdf': []
 
   // Stats
   'toggle-stats': []
@@ -237,6 +238,7 @@ function onWheel(e: WheelEvent) {
         @export-pdf="emit('export-pdf')"
         @import-json="emit('import-json')"
         @import-text="emit('import-text')"
+        @import-pdf="emit('import-pdf')"
       />
 
       <div ref="mainArea" class="flex-1 flex flex-col min-h-0 canvas-host" @wheel="onWheel">
