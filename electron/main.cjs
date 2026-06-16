@@ -103,39 +103,113 @@ function markIndexedDBMigrated() {
   fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8')
 }
 
-function getDataFilePath() {
-  return path.join(getDataDir(), 'cuotiben-data.json')
+// ── Data layer: per-notebook sharding ─────────────────────────────────
+
+function getNotebooksMetaPath() {
+  return path.join(getDataDir(), 'notebooks.json')
 }
 
-function readData() {
-  const filePath = getDataFilePath()
+function getNotebookDataPath(notebookId) {
+  return path.join(getDataDir(), `notebook_${notebookId}.json`)
+}
+
+function readNotebooksMeta() {
+  const filePath = getNotebooksMetaPath()
   try {
-    if (!fs.existsSync(filePath))
-      return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] }
-    const raw = fs.readFileSync(filePath, 'utf-8')
-    const data = JSON.parse(raw)
-    if (!data.notebooks) data.notebooks = []
+    if (!fs.existsSync(filePath)) return []
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+  } catch (err) {
+    log.error('读取笔记本元数据失败', err)
+    return []
+  }
+}
+
+function writeNotebooksMeta(notebooks) {
+  const dir = getDataDir()
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  const filePath = getNotebooksMetaPath()
+  const tmpPath = filePath + '.tmp'
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(notebooks, null, 2), 'utf-8')
+    fs.renameSync(tmpPath, filePath)
+  } catch (err) {
+    log.error('写入笔记本元数据失败', err)
+  }
+}
+
+function readNotebookData(notebookId) {
+  const filePath = getNotebookDataPath(notebookId)
+  try {
+    if (!fs.existsSync(filePath)) return { entries: [], snapshots: [], reviewLogs: [] }
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
     if (!data.entries) data.entries = []
     if (!data.snapshots) data.snapshots = []
     if (!data.reviewLogs) data.reviewLogs = []
     return data
   } catch (err) {
-    log.error('读取主数据文件失败，返回空数据集', err)
-    return { notebooks: [], entries: [], snapshots: [], reviewLogs: [] }
+    log.error(`读取错题本 ${notebookId} 失败`, err)
+    return { entries: [], snapshots: [], reviewLogs: [] }
   }
 }
 
-function writeData(data) {
+function writeNotebookData(notebookId, data) {
   const dir = getDataDir()
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  const filePath = getDataFilePath()
+  const filePath = getNotebookDataPath(notebookId)
   const tmpPath = filePath + '.tmp'
   try {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8')
     fs.renameSync(tmpPath, filePath)
-    log.info(`数据已写入: ${filePath}`)
   } catch (err) {
-    log.error('写入数据文件失败', err)
+    log.error(`写入错题本 ${notebookId} 失败`, err)
+  }
+}
+
+// One-time migration from old single-file format
+function migrateFromSingleFile() {
+  const oldPath = path.join(getDataDir(), 'cuotiben-data.json')
+  if (!fs.existsSync(oldPath)) return false
+
+  try {
+    const raw = fs.readFileSync(oldPath, 'utf-8')
+    const oldData = JSON.parse(raw)
+
+    // Write notebooks meta
+    const notebooks = oldData.notebooks || []
+    writeNotebooksMeta(notebooks)
+
+    // Distribute entries, snapshots, reviewLogs to per-notebook files
+    for (const nb of notebooks) {
+      const nbData = {
+        entries: (oldData.entries || []).filter((e) => e.notebookId === nb.id),
+        snapshots: [],
+        reviewLogs: [],
+      }
+
+      // Snapshots: match by entryId
+      const entryIds = new Set(nbData.entries.map((e) => e.id))
+      nbData.snapshots = (oldData.snapshots || []).filter((s) => entryIds.has(s.entryId))
+
+      // ReviewLogs: match by entryId
+      nbData.reviewLogs = (oldData.reviewLogs || []).filter((l) => entryIds.has(l.entryId))
+
+      writeNotebookData(nb.id, nbData)
+    }
+
+    // Handle orphaned entries (no matching notebook)
+    const knownIds = new Set(notebooks.map((n) => n.id))
+    const orphanEntries = (oldData.entries || []).filter((e) => !knownIds.has(e.notebookId))
+    if (orphanEntries.length > 0) {
+      log.warn(`迁移: ${orphanEntries.length} 条错题没有归属笔记本，已跳过`)
+    }
+
+    // Rename old file as backup
+    fs.renameSync(oldPath, oldPath + '.bak')
+    log.info('数据迁移完成: 单文件 → 分笔记本存储')
+    return true
+  } catch (err) {
+    log.error('数据迁移失败', err)
+    return false
   }
 }
 
@@ -166,112 +240,112 @@ ipcMain.handle('storage:markIndexedDBMigrated', () => {
   markIndexedDBMigrated()
 })
 
-ipcMain.handle('storage:getAll', () => {
-  const data = readData()
-  return data.entries
+ipcMain.handle('storage:getAll', (_e, notebookId) => {
+  return readNotebookData(notebookId).entries
 })
 
-ipcMain.handle('storage:get', (_e, id) => {
-  const data = readData()
-  return data.entries.find((e) => e.id === id) ?? null
+ipcMain.handle('storage:get', (_e, notebookId, id) => {
+  const nbData = readNotebookData(notebookId)
+  return nbData.entries.find((e) => e.id === id) ?? null
 })
 
 ipcMain.handle('storage:put', (_e, entry) => {
-  const data = readData()
-  const idx = data.entries.findIndex((e) => e.id === entry.id)
+  if (!entry.notebookId) return
+  const nbData = readNotebookData(entry.notebookId)
+  const idx = nbData.entries.findIndex((e) => e.id === entry.id)
   if (idx >= 0) {
-    data.entries[idx] = entry
+    nbData.entries[idx] = entry
   } else {
-    data.entries.push(entry)
+    nbData.entries.push(entry)
   }
-  writeData(data)
+  writeNotebookData(entry.notebookId, nbData)
 })
 
-ipcMain.handle('storage:delete', (_e, id) => {
-  const data = readData()
-  data.entries = data.entries.filter((e) => e.id !== id)
-  writeData(data)
+ipcMain.handle('storage:delete', (_e, notebookId, id) => {
+  const nbData = readNotebookData(notebookId)
+  nbData.entries = nbData.entries.filter((e) => e.id !== id)
+  writeNotebookData(notebookId, nbData)
 })
 
-ipcMain.handle('storage:putSnapshot', (_e, snapshot) => {
-  const data = readData()
-  const idx = data.snapshots.findIndex((s) => s.entryId === snapshot.entryId)
+ipcMain.handle('storage:putSnapshot', (_e, notebookId, snapshot) => {
+  const nbData = readNotebookData(notebookId)
+  const idx = nbData.snapshots.findIndex((s) => s.entryId === snapshot.entryId)
   if (idx >= 0) {
-    data.snapshots[idx] = snapshot
+    nbData.snapshots[idx] = snapshot
   } else {
-    data.snapshots.push(snapshot)
+    nbData.snapshots.push(snapshot)
   }
-  writeData(data)
+  writeNotebookData(notebookId, nbData)
 })
 
-ipcMain.handle('storage:getSnapshot', (_e, entryId) => {
-  const data = readData()
-  return data.snapshots.find((s) => s.entryId === entryId) ?? null
+ipcMain.handle('storage:getSnapshot', (_e, notebookId, entryId) => {
+  const nbData = readNotebookData(notebookId)
+  return nbData.snapshots.find((s) => s.entryId === entryId) ?? null
 })
 
-ipcMain.handle('storage:getAllSnapshots', () => {
-  const data = readData()
-  return data.snapshots
+ipcMain.handle('storage:getAllSnapshots', (_e, notebookId) => {
+  return readNotebookData(notebookId).snapshots
 })
 
-ipcMain.handle('storage:deleteSnapshot', (_e, entryId) => {
-  const data = readData()
-  data.snapshots = data.snapshots.filter((s) => s.entryId !== entryId)
-  writeData(data)
+ipcMain.handle('storage:deleteSnapshot', (_e, notebookId, entryId) => {
+  const nbData = readNotebookData(notebookId)
+  nbData.snapshots = nbData.snapshots.filter((s) => s.entryId !== entryId)
+  writeNotebookData(notebookId, nbData)
 })
 
-ipcMain.handle('storage:deleteAllSnapshots', () => {
-  const data = readData()
-  data.snapshots = []
-  writeData(data)
+ipcMain.handle('storage:deleteAllSnapshots', (_e, notebookId) => {
+  const nbData = readNotebookData(notebookId)
+  nbData.snapshots = []
+  writeNotebookData(notebookId, nbData)
 })
 
 // ── Review log handlers ──────────────────────────────────────────
 
-ipcMain.handle('storage:getAllReviewLogs', () => {
-  const data = readData()
-  return data.reviewLogs || []
+ipcMain.handle('storage:getAllReviewLogs', (_e, notebookId) => {
+  return readNotebookData(notebookId).reviewLogs || []
 })
 
-ipcMain.handle('storage:addReviewLog', (_e, log) => {
-  const data = readData()
-  if (!data.reviewLogs) data.reviewLogs = []
-  data.reviewLogs.push(log)
-  writeData(data)
+ipcMain.handle('storage:addReviewLog', (_e, notebookId, log) => {
+  const nbData = readNotebookData(notebookId)
+  if (!nbData.reviewLogs) nbData.reviewLogs = []
+  nbData.reviewLogs.push(log)
+  writeNotebookData(notebookId, nbData)
 })
 
-ipcMain.handle('storage:deleteReviewLogsByEntry', (_e, entryId) => {
-  const data = readData()
-  data.reviewLogs = (data.reviewLogs || []).filter((l) => l.entryId !== entryId)
-  writeData(data)
+ipcMain.handle('storage:deleteReviewLogsByEntry', (_e, notebookId, entryId) => {
+  const nbData = readNotebookData(notebookId)
+  nbData.reviewLogs = (nbData.reviewLogs || []).filter((l) => l.entryId !== entryId)
+  writeNotebookData(notebookId, nbData)
 })
 
 // ── Notebook handlers ─────────────────────────────────────────────
 
 ipcMain.handle('storage:getAllNotebooks', () => {
-  return readData().notebooks || []
+  return readNotebooksMeta()
 })
 
 ipcMain.handle('storage:putNotebook', (_e, notebook) => {
-  const data = readData()
-  if (!data.notebooks) data.notebooks = []
-  const idx = data.notebooks.findIndex((n) => n.id === notebook.id)
+  const notebooks = readNotebooksMeta()
+  const idx = notebooks.findIndex((n) => n.id === notebook.id)
   if (idx >= 0) {
-    data.notebooks[idx] = notebook
+    notebooks[idx] = notebook
   } else {
-    data.notebooks.push(notebook)
+    notebooks.push(notebook)
   }
-  writeData(data)
+  writeNotebooksMeta(notebooks)
 })
 
 ipcMain.handle('storage:deleteNotebook', (_e, id) => {
-  const data = readData()
-  data.notebooks = (data.notebooks || []).filter((n) => n.id !== id)
-  data.entries = (data.entries || []).filter((e) => e.notebookId !== id)
-  const deletedIds = new Set((data.entries || []).map((e) => e.id))
-  data.snapshots = (data.snapshots || []).filter((s) => deletedIds.has(s.entryId))
-  data.reviewLogs = (data.reviewLogs || []).filter((l) => deletedIds.has(l.entryId))
-  writeData(data)
+  const notebooks = readNotebooksMeta()
+  writeNotebooksMeta(notebooks.filter((n) => n.id !== id))
+
+  // Remove the per-notebook data file
+  const nbPath = getNotebookDataPath(id)
+  try {
+    if (fs.existsSync(nbPath)) fs.unlinkSync(nbPath)
+  } catch (err) {
+    log.warn(`删除笔记本文件失败: ${nbPath}`, err)
+  }
 })
 
 ipcMain.handle('storage:getDataDir', () => getDataDir())
@@ -283,36 +357,52 @@ ipcMain.handle('storage:setDataDir', async () => {
   })
   if (result.canceled || result.filePaths.length === 0) return getDataDir()
   const newDir = result.filePaths[0]
-  // Migrate existing data to new directory
-  const oldData = readData()
   const oldDir = getDataDir()
+
+  // Copy all notebook data files to new directory
+  try {
+    if (!fs.existsSync(newDir)) fs.mkdirSync(newDir, { recursive: true })
+
+    const oldMetaPath = path.join(oldDir, 'notebooks.json')
+    if (fs.existsSync(oldMetaPath)) {
+      fs.copyFileSync(oldMetaPath, path.join(newDir, 'notebooks.json'))
+    }
+
+    const files = fs.readdirSync(oldDir)
+    for (const f of files) {
+      if (f.startsWith('notebook_') && f.endsWith('.json')) {
+        fs.copyFileSync(path.join(oldDir, f), path.join(newDir, f))
+      }
+    }
+  } catch (err) {
+    log.warn('复制数据文件到新目录失败', err)
+  }
+
   dataDir = newDir
   saveConfig()
-  writeData(oldData)
-  // Remove old data file if it exists
-  try {
-    const oldFile = path.join(oldDir, 'cuotiben-data.json')
-    if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile)
-  } catch (err) {
-    log.warn('清理旧数据文件失败', err)
-  }
   return newDir
 })
 
 ipcMain.handle('storage:exportAll', () => {
-  return JSON.stringify(readData().entries, null, 2)
+  const notebooks = readNotebooksMeta()
+  const allEntries = []
+  for (const nb of notebooks) {
+    const nbData = readNotebookData(nb.id)
+    allEntries.push(...nbData.entries)
+  }
+  return JSON.stringify(allEntries, null, 2)
 })
 
-ipcMain.handle('storage:importAll', (_e, entries) => {
-  const data = readData()
-  const existingIds = new Set(data.entries.map((e) => e.id))
+ipcMain.handle('storage:importAll', (_e, notebookId, entries) => {
+  const nbData = readNotebookData(notebookId)
+  const existingIds = new Set(nbData.entries.map((e) => e.id))
   for (const entry of entries) {
     if (!existingIds.has(entry.id)) {
-      data.entries.push(entry)
+      nbData.entries.push(entry)
       existingIds.add(entry.id)
     }
   }
-  writeData(data)
+  writeNotebookData(notebookId, nbData)
 })
 
 // ── Archive export (.ctb) ────────────────────────────────────────────
@@ -336,19 +426,108 @@ function extractImages(html) {
 
 function restoreImages(html, imagesDir) {
   return html.replace(/<img[^>]+src="images\/([^"]+)"[^>]*>/gi, (match, filename) => {
-    const imgPath = path.join(imagesDir, filename)
+    const safeFilename = path.basename(filename)
+    const imgPath = path.join(imagesDir, safeFilename)
     if (!fs.existsSync(imgPath)) return match
     const buf = fs.readFileSync(imgPath)
-    const ext = path.extname(filename).slice(1).toLowerCase()
+    const ext = path.extname(safeFilename).slice(1).toLowerCase()
     const mime = ext === 'jpg' ? 'jpeg' : ext
     const b64 = buf.toString('base64')
     return match.replace(/src="images\/[^"]+"/i, `src="data:image/${mime};base64,${b64}"`)
   })
 }
 
+// ── Merge helpers ─────────────────────────────────────────────────────
+
+function mergeArrayWithMap(currentArray, importedArray, processItem) {
+  const map = new Map(currentArray.map((item) => [item.id, item]))
+  let importedCount = 0
+
+  for (const item of importedArray) {
+    const processed = processItem ? processItem(item) : item
+    map.set(processed.id, processed)
+    importedCount++
+  }
+
+  return { mergedArray: Array.from(map.values()), importedCount }
+}
+
+function mergeImportedData(importData, keepReviewState) {
+  // Merge notebooks into notebooks.json
+  const currentNotebooks = readNotebooksMeta()
+  const safeImportNb = importData.notebooks || []
+
+  const { mergedArray: finalNotebooks } = mergeArrayWithMap(currentNotebooks, safeImportNb)
+  writeNotebooksMeta(finalNotebooks)
+
+  // Build entryId → notebookId lookup for review log routing
+  const entryNotebookMap = new Map()
+
+  // Group imported entries by notebookId
+  const entriesByNotebook = new Map()
+  const safeImportEntries = Array.isArray(importData.entries) ? importData.entries : []
+  let importedCount = 0
+
+  for (const item of safeImportEntries) {
+    const cloned = structuredClone(item)
+    if (!keepReviewState) {
+      cloned.masteryLevel = 0
+      cloned.consecutivePasses = 0
+      delete cloned.nextReviewDate
+      delete cloned.lastReviewDate
+    }
+    const nbId = cloned.notebookId || '__orphan__'
+    if (!entriesByNotebook.has(nbId)) entriesByNotebook.set(nbId, [])
+    entriesByNotebook.get(nbId).push(cloned)
+    entryNotebookMap.set(cloned.id, nbId)
+    importedCount++
+  }
+
+  // Merge entries into each notebook file
+  for (const [nbId, entries] of entriesByNotebook) {
+    if (nbId === '__orphan__') continue
+    const nbData = readNotebookData(nbId)
+    const { mergedArray: mergedEntries } = mergeArrayWithMap(nbData.entries, entries)
+    nbData.entries = mergedEntries
+    writeNotebookData(nbId, nbData)
+  }
+
+  // Merge review logs only when keeping review state
+  let importedLogs = 0
+  if (keepReviewState) {
+    const logsByNotebook = new Map()
+    const safeImportLogs = importData.reviewLogs || []
+    for (const log of safeImportLogs) {
+      const nbId = entryNotebookMap.get(log.entryId)
+      if (nbId && nbId !== '__orphan__') {
+        if (!logsByNotebook.has(nbId)) logsByNotebook.set(nbId, [])
+        logsByNotebook.get(nbId).push(log)
+        importedLogs++
+      }
+    }
+    for (const [nbId, logs] of logsByNotebook) {
+      const nbData = readNotebookData(nbId)
+      const { mergedArray: mergedLogs } = mergeArrayWithMap(nbData.reviewLogs || [], logs)
+      nbData.reviewLogs = mergedLogs
+      writeNotebookData(nbId, nbData)
+    }
+  }
+
+  return { importedCount, importedLogs }
+}
+
 ipcMain.handle('storage:exportArchive', async () => {
-  const data = readData()
-  if (!data.entries || data.entries.length === 0) {
+  // Aggregate data from all notebooks
+  const notebooks = readNotebooksMeta()
+  const allEntries = []
+  const allReviewLogs = []
+  for (const nb of notebooks) {
+    const nbData = readNotebookData(nb.id)
+    allEntries.push(...nbData.entries)
+    allReviewLogs.push(...(nbData.reviewLogs || []))
+  }
+
+  if (allEntries.length === 0) {
     return { success: false, message: '暂无错题可导出' }
   }
 
@@ -367,23 +546,20 @@ ipcMain.handle('storage:exportArchive', async () => {
 
   const tmpDir = path.join(getDataDir(), '.tmp_export')
   try {
-    // Clean and recreate temp dir
     if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true })
     fs.mkdirSync(tmpDir, { recursive: true })
 
     const imagesDir = path.join(tmpDir, 'images')
     fs.mkdirSync(imagesDir, { recursive: true })
 
-    // Deep-clone entries to avoid mutating in-memory data
     const exportData = JSON.parse(
       JSON.stringify({
-        notebooks: data.notebooks,
-        entries: data.entries,
-        reviewLogs: data.reviewLogs,
+        notebooks,
+        entries: allEntries,
+        reviewLogs: allReviewLogs,
       }),
     )
 
-    // Extract base64 images and replace with relative paths
     for (const entry of exportData.entries) {
       for (const field of ['question', 'wrongAnswer', 'correctAnswer']) {
         const html = entry[field] || ''
@@ -395,11 +571,9 @@ ipcMain.handle('storage:exportArchive', async () => {
       }
     }
 
-    // Write data.json
     const dataJsonPath = path.join(tmpDir, 'data.json')
     fs.writeFileSync(dataJsonPath, JSON.stringify(exportData, null, 2), 'utf-8')
 
-    // Create .ctb archive
     const zip = new AdmZip()
     zip.addLocalFile(dataJsonPath)
     zip.addLocalFolder(imagesDir, 'images')
@@ -422,7 +596,7 @@ ipcMain.handle('storage:exportArchive', async () => {
   }
 })
 
-ipcMain.handle('storage:importArchive', async () => {
+ipcMain.handle('storage:importArchive', async (_e, keepReviewState) => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: '导入错题本归档',
     filters: [{ name: '错题本归档', extensions: ['ctb', 'zip'] }],
@@ -434,25 +608,6 @@ ipcMain.handle('storage:importArchive', async () => {
   }
 
   const filePath = result.filePaths[0]
-
-  // Ask whether to keep review state
-  const confirmResult = await dialog.showMessageBox(mainWindow, {
-    type: 'question',
-    title: '导入选项',
-    message: '是否保留原有的复习进度？',
-    detail:
-      '【保留进度】继承这些错题的熟练度、复习安排和历史记录。\n【重置为未复习】所有导入的错题将作为全新的错题，清除原有进度。',
-    buttons: ['保留复习进度', '重置为未复习', '取消导入'],
-    defaultId: 0,
-    cancelId: 2,
-  })
-
-  if (confirmResult.response === 2) {
-    return { success: false, message: '已取消导入' }
-  }
-
-  const keepReviewState = confirmResult.response === 0
-
   const tmpDir = path.join(getDataDir(), '.tmp_import')
 
   try {
@@ -492,47 +647,9 @@ ipcMain.handle('storage:importArchive', async () => {
       }
     }
 
-    // Merge into current data
-    const currentData = readData()
+    // Merge into per-notebook files
+    const { importedCount, importedLogs } = mergeImportedData(importData, keepReviewState)
 
-    if (!currentData.notebooks) currentData.notebooks = []
-    if (!currentData.reviewLogs) currentData.reviewLogs = []
-
-    // Merge notebooks (overwrite existing)
-    const importNb = importData.notebooks || []
-    for (const nb of importNb) {
-      const idx = currentData.notebooks.findIndex((n) => n.id === nb.id)
-      if (idx >= 0) currentData.notebooks[idx] = nb
-      else currentData.notebooks.push(nb)
-    }
-
-    // Merge entries (overwrite existing)
-    let importedCount = 0
-    for (const entry of importData.entries) {
-      if (!keepReviewState) {
-        entry.masteryLevel = 0
-        entry.consecutivePasses = 0
-        delete entry.nextReviewDate
-        delete entry.lastReviewDate
-      }
-      const idx = currentData.entries.findIndex((e) => e.id === entry.id)
-      if (idx >= 0) currentData.entries[idx] = entry
-      else currentData.entries.push(entry)
-      importedCount++
-    }
-
-    // Merge review logs only when keeping review state
-    let importedLogs = 0
-    if (keepReviewState) {
-      for (const log of importData.reviewLogs || []) {
-        const idx = currentData.reviewLogs.findIndex((l) => l.id === log.id)
-        if (idx >= 0) currentData.reviewLogs[idx] = log
-        else currentData.reviewLogs.push(log)
-        importedLogs++
-      }
-    }
-
-    writeData(currentData)
     log.info(`导入归档: ${filePath} (${importedCount} 条错题, ${importedLogs} 条复习记录)`)
 
     return {
@@ -553,6 +670,13 @@ ipcMain.handle('storage:importArchive', async () => {
 })
 
 function createWindow() {
+  // Run one-time migration from old single-file format
+  try {
+    migrateFromSingleFile()
+  } catch (err) {
+    log.error('迁移检查失败', err)
+  }
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,

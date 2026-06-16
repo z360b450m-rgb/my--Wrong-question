@@ -1,5 +1,6 @@
 import type { NoteEntry } from '@/types'
 import { db } from '@/services/db'
+import { ref } from 'vue'
 import JSZip from 'jszip'
 
 function timestamp(): string {
@@ -65,6 +66,15 @@ export function useBackup(
   reload: () => Promise<void>,
   onToast: (msg: string) => void,
 ) {
+  // Import options modal state
+  const importModalVisible = ref(false)
+  let importModalResolve: ((value: boolean | null) => void) | null = null
+
+  function handleImportOption(keep: boolean | null) {
+    importModalVisible.value = false
+    importModalResolve?.(keep)
+  }
+
   async function exportData() {
     // Electron: native dialog + adm-zip
     if (window.electronAPI?.exportArchive) {
@@ -109,9 +119,17 @@ export function useBackup(
   }
 
   async function importData() {
+    // Show import options modal first, wait for user choice
+    const keepReviewState = await new Promise<boolean | null>((resolve) => {
+      importModalResolve = resolve
+      importModalVisible.value = true
+    })
+
+    if (keepReviewState === null) return
+
     // Electron: native dialog + adm-zip
     if (window.electronAPI?.importArchive) {
-      const res = await window.electronAPI.importArchive()
+      const res = await window.electronAPI.importArchive(keepReviewState)
       if (res.success) await reload()
       onToast(res.message)
       return
@@ -125,10 +143,6 @@ export function useBackup(
     input.onchange = async () => {
       const file = input.files?.[0]
       if (!file) return
-
-      const keepReviewState = window.confirm(
-        '是否保留原有的复习进度？\n\n[确定]：保留原有的熟练度和复习安排\n[取消]：重置为全新的未复习错题',
-      )
 
       try {
         const zip = await JSZip.loadAsync(file)
@@ -215,5 +229,5 @@ export function useBackup(
     input.click()
   }
 
-  return { exportData, importData }
+  return { exportData, importData, importModalVisible, handleImportOption }
 }

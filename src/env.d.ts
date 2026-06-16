@@ -8,24 +8,26 @@ interface DesktopSource {
 interface Window {
   electronAPI?: {
     platform: string
-    getAll: () => Promise<any[]>
-    get: (id: string) => Promise<any | null>
+    getAll: (notebookId: string) => Promise<any[]>
+    get: (notebookId: string, id: string) => Promise<any | null>
     put: (entry: any) => Promise<void>
-    delete: (id: string) => Promise<void>
-    putSnapshot: (snapshot: any) => Promise<void>
-    getSnapshot: (entryId: string) => Promise<any | null>
-    getAllSnapshots: () => Promise<any[]>
-    deleteSnapshot: (entryId: string) => Promise<void>
-    deleteAllSnapshots: () => Promise<void>
+    delete: (notebookId: string, id: string) => Promise<void>
+    putSnapshot: (notebookId: string, snapshot: any) => Promise<void>
+    getSnapshot: (notebookId: string, entryId: string) => Promise<any | null>
+    getAllSnapshots: (notebookId: string) => Promise<any[]>
+    deleteSnapshot: (notebookId: string, entryId: string) => Promise<void>
+    deleteAllSnapshots: (notebookId: string) => Promise<void>
     getDataDir: () => Promise<string>
     setDataDir: () => Promise<string>
     exportAll: () => Promise<string>
-    importAll: (entries: any[]) => Promise<void>
+    importAll: (notebookId: string, entries: any[]) => Promise<void>
     exportArchive: () => Promise<{ success: boolean; message: string; count?: number }>
-    importArchive: () => Promise<{ success: boolean; message: string; count?: number }>
-    getAllReviewLogs: () => Promise<any[]>
-    addReviewLog: (log: any) => Promise<void>
-    deleteReviewLogsByEntry: (entryId: string) => Promise<void>
+    importArchive: (
+      keepReviewState: boolean,
+    ) => Promise<{ success: boolean; message: string; count?: number }>
+    getAllReviewLogs: (notebookId: string) => Promise<any[]>
+    addReviewLog: (notebookId: string, log: any) => Promise<void>
+    deleteReviewLogsByEntry: (notebookId: string, entryId: string) => Promise<void>
     getAllNotebooks: () => Promise<any[]>
     putNotebook: (notebook: any) => Promise<void>
     deleteNotebook: (id: string) => Promise<void>

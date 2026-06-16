@@ -42,13 +42,20 @@ function isElectron(): boolean {
   return typeof window !== 'undefined' && !!window.electronAPI
 }
 
+// Current notebook context for per-notebook sharding
+let _notebookId = ''
+
+export function setCurrentNotebookId(id: string) {
+  _notebookId = id
+}
+
 const fileDb = {
-  async getAll(): Promise<NoteEntry[]> {
-    return window.electronAPI!.getAll()
+  async getAll(notebookId: string): Promise<NoteEntry[]> {
+    return window.electronAPI!.getAll(notebookId || _notebookId)
   },
 
-  async get(id: string): Promise<NoteEntry | undefined> {
-    const entry = await window.electronAPI!.get(id)
+  async get(notebookId: string, id: string): Promise<NoteEntry | undefined> {
+    const entry = await window.electronAPI!.get(notebookId || _notebookId, id)
     return entry ?? undefined
   },
 
@@ -56,43 +63,50 @@ const fileDb = {
     await window.electronAPI!.put(entry)
   },
 
-  async delete(id: string): Promise<void> {
-    await window.electronAPI!.delete(id)
+  async delete(notebookId: string, id: string): Promise<void> {
+    await window.electronAPI!.delete(notebookId || _notebookId, id)
   },
 
-  async putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
-    await window.electronAPI!.putSnapshot({ entryId, data, savedAt: Date.now() })
+  async putSnapshot(notebookId: string, entryId: string, data: NoteEntry): Promise<void> {
+    await window.electronAPI!.putSnapshot(notebookId || _notebookId, {
+      entryId,
+      data,
+      savedAt: Date.now(),
+    })
   },
 
   async getSnapshot(
+    notebookId: string,
     entryId: string,
   ): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
-    const snap = await window.electronAPI!.getSnapshot(entryId)
+    const snap = await window.electronAPI!.getSnapshot(notebookId || _notebookId, entryId)
     return snap ?? undefined
   },
 
-  async getAllSnapshots(): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
-    return window.electronAPI!.getAllSnapshots()
+  async getAllSnapshots(
+    notebookId: string,
+  ): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
+    return window.electronAPI!.getAllSnapshots(notebookId || _notebookId)
   },
 
-  async deleteSnapshot(entryId: string): Promise<void> {
-    await window.electronAPI!.deleteSnapshot(entryId)
+  async deleteSnapshot(notebookId: string, entryId: string): Promise<void> {
+    await window.electronAPI!.deleteSnapshot(notebookId || _notebookId, entryId)
   },
 
-  async deleteAllSnapshots(): Promise<void> {
-    await window.electronAPI!.deleteAllSnapshots()
+  async deleteAllSnapshots(notebookId: string): Promise<void> {
+    await window.electronAPI!.deleteAllSnapshots(notebookId || _notebookId)
   },
 
-  async getAllReviewLogs(): Promise<ReviewLog[]> {
-    return window.electronAPI!.getAllReviewLogs()
+  async getAllReviewLogs(notebookId: string): Promise<ReviewLog[]> {
+    return window.electronAPI!.getAllReviewLogs(notebookId || _notebookId)
   },
 
-  async addReviewLog(log: ReviewLog): Promise<void> {
-    await window.electronAPI!.addReviewLog(log)
+  async addReviewLog(notebookId: string, log: ReviewLog): Promise<void> {
+    await window.electronAPI!.addReviewLog(notebookId || _notebookId, log)
   },
 
-  async deleteReviewLogsByEntry(entryId: string): Promise<void> {
-    await window.electronAPI!.deleteReviewLogsByEntry(entryId)
+  async deleteReviewLogsByEntry(notebookId: string, entryId: string): Promise<void> {
+    await window.electronAPI!.deleteReviewLogsByEntry(notebookId || _notebookId, entryId)
   },
 
   async getAllNotebooks(): Promise<Notebook[]> {
@@ -157,55 +171,69 @@ function tx<T>(
 }
 
 const idbDb = {
-  getAll(): Promise<NoteEntry[]> {
+   
+  async getAll(_notebookId: string): Promise<NoteEntry[]> {
     return tx('readonly', (s) => s.getAll())
   },
 
-  get(id: string): Promise<NoteEntry | undefined> {
+   
+  async get(_notebookId: string, id: string): Promise<NoteEntry | undefined> {
     return tx('readonly', (s) => s.get(id))
   },
 
-  put(entry: NoteEntry): Promise<void> {
+  async put(entry: NoteEntry): Promise<void> {
     return tx('readwrite', (s) => s.put(entry)).then(() => undefined)
   },
 
-  delete(id: string): Promise<void> {
+   
+  async delete(_notebookId: string, id: string): Promise<void> {
     return tx('readwrite', (s) => s.delete(id)).then(() => undefined)
   },
 
-  putSnapshot(entryId: string, data: NoteEntry): Promise<void> {
+   
+  async putSnapshot(_notebookId: string, entryId: string, data: NoteEntry): Promise<void> {
     return tx('readwrite', (s) => s.put({ entryId, data, savedAt: Date.now() }), SNAP_STORE).then(
       () => undefined,
     )
   },
 
-  getSnapshot(
+   
+  async getSnapshot(
+    _notebookId: string,
     entryId: string,
   ): Promise<{ entryId: string; data: NoteEntry; savedAt: number } | undefined> {
     return tx('readonly', (s) => s.get(entryId), SNAP_STORE)
   },
 
-  getAllSnapshots(): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
+   
+  async getAllSnapshots(
+    _notebookId: string,
+  ): Promise<{ entryId: string; data: NoteEntry; savedAt: number }[]> {
     return tx('readonly', (s) => s.getAll(), SNAP_STORE)
   },
 
-  deleteSnapshot(entryId: string): Promise<void> {
+   
+  async deleteSnapshot(_notebookId: string, entryId: string): Promise<void> {
     return tx('readwrite', (s) => s.delete(entryId), SNAP_STORE).then(() => undefined)
   },
 
-  deleteAllSnapshots(): Promise<void> {
+   
+  async deleteAllSnapshots(_notebookId: string): Promise<void> {
     return tx('readwrite', (s) => s.clear(), SNAP_STORE).then(() => undefined)
   },
 
-  getAllReviewLogs(): Promise<ReviewLog[]> {
+   
+  async getAllReviewLogs(_notebookId: string): Promise<ReviewLog[]> {
     return tx('readonly', (s) => s.getAll(), REVIEW_LOG_STORE)
   },
 
-  addReviewLog(log: ReviewLog): Promise<void> {
+   
+  async addReviewLog(_notebookId: string, log: ReviewLog): Promise<void> {
     return tx('readwrite', (s) => s.put(log), REVIEW_LOG_STORE).then(() => undefined)
   },
 
-  deleteReviewLogsByEntry(entryId: string): Promise<void> {
+   
+  async deleteReviewLogsByEntry(_notebookId: string, entryId: string): Promise<void> {
     return openDB().then((db) => {
       return new Promise<void>((resolve, reject) => {
         // 1. 开启单个读写事务
