@@ -438,7 +438,7 @@ onUnmounted(() => {
     <div
       ref="questionPanelEl"
       class="flex-shrink-0 bg-white dark:bg-[#141413] border border-gray-100 dark:border-[#2e2e2c] rounded-xl shadow-sm flex flex-col overflow-hidden group"
-      style="height: 35%"
+      :style="{ height: '35%' }"
     >
       <div
         class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:text-brand-mid border-b border-gray-100 dark:border-[#2e2e2c] bg-brand-light dark:bg-[#1e1e1c] flex-shrink-0"
@@ -513,7 +513,7 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="flex-1 overflow-y-auto">
-        <div ref="questionContentRef" style="position: relative; min-height: 100%">
+        <div ref="questionContentRef" :style="{ position: 'relative', minHeight: '100%' }">
           <div class="relative h-full">
             <div
               ref="questionBody"
