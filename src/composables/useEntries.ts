@@ -3,6 +3,9 @@ import type { NoteEntry } from '@/types'
 import { db } from '@/services/db'
 import { useReviewSettings } from '@/composables/useReviewSettings'
 import { useNotebooks } from '@/composables/useNotebooks'
+import { useRagSync } from '@/composables/useRagSync'
+
+const ragSync = useRagSync()
 
 // IndexedDB can't store Vue Proxy objects (structured clone error)
 function toPlain<T>(obj: T): T {
@@ -292,6 +295,8 @@ export function useEntries() {
     } catch {
       /* ok if missing */
     }
+    // RAG 同步：失败静默，不阻塞保存流程
+    void ragSync.upsertEntry(toPlain(entry))
     isDirty.value = false
     showToast('已保存')
   }
@@ -324,12 +329,14 @@ export function useEntries() {
 
   async function deleteCurrent() {
     if (!activeId.value) return
+    const deletedId = activeId.value
     await db.delete(notebookId.value, activeId.value)
     await db.deleteSnapshot(notebookId.value, activeId.value)
     entries.value = entries.value.filter((e) => e.id !== activeId.value)
     activeId.value = null
     isDirty.value = false
     showDeleteModal.value = false
+    void ragSync.deleteEntry(deletedId)
     showToast('错题已删除')
   }
 
@@ -340,6 +347,7 @@ export function useEntries() {
     entry.updatedAt = Date.now()
     try {
       await db.put(toPlain(entry))
+      void ragSync.upsertEntry(toPlain(entry))
       showToast('已重命名')
     } catch (err) {
       console.error('Rename failed', err)

@@ -1,6 +1,74 @@
 import type { NoteEntry } from '@/types'
 import { parsePastedText } from './parsePastedText'
 
+// ===================================================================
+// 精准顺序扫描解析器 — 按题号递增匹配
+// ===================================================================
+
+interface ParseOptions {
+  mode: 'sequential' | 'default'
+  startNum?: number
+  endNum?: number
+}
+
+function defaultParse(text: string) {
+  const questions: Array<{ title: string; content: string; order: number }> = []
+  const questionRegex = /(?:^|\n)(?=\s*(?:\d+[、.)）]|\(\d+\)|【\d+】|第\d+题))/g
+  const blocks = text.split(questionRegex).filter((b) => b.trim().length > 0)
+  let order = 1
+  for (const block of blocks) {
+    const startsWithNumber = /^\s*(?:\d+[、.)）]|\(\d+\)|【\d+】|第\d+题)/
+    if (startsWithNumber.test(block)) {
+      questions.push({
+        title: `第 ${order} 题`,
+        content: block.trim(),
+        order,
+      })
+      order++
+    }
+  }
+  return questions
+}
+
+export function parsePdfWithRange(text: string, options: ParseOptions) {
+  if (options.mode === 'sequential') {
+    const questions: Array<{ title: string; content: string; order: number }> = []
+    let currentNum = options.startNum || 1
+    const maxNum = options.endNum || 120
+
+    while (currentNum <= maxNum) {
+      const currentRegex = new RegExp(`(?:^|[\\r\\n])${currentNum}([\\.、\\s])`)
+      const nextRegex = new RegExp(`(?:^|[\\r\\n])${currentNum + 1}([\\.、\\s])`)
+
+      const startIndex = text.search(currentRegex)
+      const nextIndex = text.search(nextRegex)
+
+      if (startIndex !== -1) {
+        let questionText = ''
+        if (nextIndex !== -1) {
+          questionText = text.substring(startIndex, nextIndex).trim()
+        } else {
+          questionText = text.substring(startIndex).trim()
+        }
+
+        questions.push({
+          title: `第 ${currentNum} 题`,
+          content: questionText,
+          order: currentNum,
+        })
+      }
+      currentNum++
+    }
+    return questions
+  }
+
+  return defaultParse(text)
+}
+
+// ===================================================================
+// 原有 PDF 解析管线（pdfjs-dist → 文本重构 → parsePastedText）
+// ===================================================================
+
 let pdfjsLib: typeof import('pdfjs-dist') | null = null
 
 async function ensurePdfJs(): Promise<typeof import('pdfjs-dist')> {

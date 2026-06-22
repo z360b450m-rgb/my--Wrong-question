@@ -55,6 +55,8 @@ export interface NoteEntry {
   nextReviewDate?: number
   // Canvas drawing (data URL)
   drawing?: string
+  // 归属的知识库；未设置则默认 'notes'
+  kbId?: string
 }
 
 export interface ReviewLog {
@@ -62,4 +64,20 @@ export interface ReviewLog {
   entryId: string
   timestamp: number
   quality: number | string
+}
+
+/**
+ * AI 指令（skill）—— 用户在 AI 问答输入框敲 /<trigger> 触发。
+ * systemPrompt 会替换默认 system，让 AI 按你想要的方式回答。
+ * scope=entry 仅在错题模式可用；global 仅全库；both 都可用。
+ */
+export interface AiSkill {
+  id: string
+  name: string
+  trigger: string
+  description?: string
+  systemPrompt: string
+  scope: 'entry' | 'global' | 'both'
+  enabled: boolean
+  updatedAt: number
 }

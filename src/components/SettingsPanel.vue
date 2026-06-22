@@ -3,6 +3,11 @@
 // useDarkMode Hook。禁止直接操作 localStorage 或存储。
 import { reactive, ref, watch } from 'vue'
 import { useReviewSettings } from '@/composables/useReviewSettings'
+import AiSkillsEditor from './AiSkillsEditor.vue'
+import KnowledgeBaseManager from './KnowledgeBaseManager.vue'
+
+const aiSkillsExpanded = ref(false)
+const kbExpanded = ref(false)
 
 defineProps<{
   isDark: boolean
@@ -295,6 +300,68 @@ function save() {
             </svg>
             {{ isElectron ? '更改保存目录' : '仅桌面端可用' }}
           </button>
+        </div>
+
+        <!-- 知识库 -->
+        <div class="pt-4 border-t border-gray-100 dark:border-[#2e2e2c]">
+          <button
+            class="w-full flex items-center justify-between text-left"
+            @click="kbExpanded = !kbExpanded"
+          >
+            <div>
+              <div class="text-[13px] font-medium text-gray-700 dark:text-brand-light-gray">
+                知识库
+              </div>
+              <div class="text-[11px] text-gray-400 dark:text-brand-mid mt-0.5">
+                多个独立知识库 · 各自检索
+              </div>
+            </div>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              :class="['transition-transform', kbExpanded ? 'rotate-180' : '']"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div v-if="kbExpanded" class="mt-3">
+            <KnowledgeBaseManager />
+          </div>
+        </div>
+
+        <!-- AI 指令库 -->
+        <div class="pt-4 border-t border-gray-100 dark:border-[#2e2e2c]">
+          <button
+            class="w-full flex items-center justify-between text-left"
+            @click="aiSkillsExpanded = !aiSkillsExpanded"
+          >
+            <div>
+              <div class="text-[13px] font-medium text-gray-700 dark:text-brand-light-gray">
+                AI 指令库
+              </div>
+              <div class="text-[11px] text-gray-400 dark:text-brand-mid mt-0.5">
+                调教 AI 回答风格 · 输入 / 触发
+              </div>
+            </div>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              :class="['transition-transform', aiSkillsExpanded ? 'rotate-180' : '']"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div v-if="aiSkillsExpanded" class="mt-3">
+            <AiSkillsEditor />
+          </div>
         </div>
       </div>
     </div>

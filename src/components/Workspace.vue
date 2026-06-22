@@ -10,6 +10,7 @@ import { PEN_COLORS } from '@/composables/useDrawing'
 import AppSidebar from './AppSidebar.vue'
 import AppToolbar from './AppToolbar.vue'
 import NoteEditor from './NoteEditor.vue'
+import AiChatSidebar from './AiChatSidebar.vue'
 import ReviewPanel from './ReviewPanel.vue'
 import DeleteModal from './DeleteModal.vue'
 import StatsPanel from './StatsPanel.vue'
@@ -242,15 +243,21 @@ function onWheel(e: WheelEvent) {
       />
 
       <div ref="mainArea" class="flex-1 flex flex-col min-h-0 canvas-host" @wheel="onWheel">
-        <NoteEditor
+        <div
           v-if="mode === 'edit' && activeEntry"
-          :entry="activeEntry"
-          :answers-hidden="answersHidden"
-          @update="emit('mark-dirty')"
-          @blur-save="emit('blur-save')"
-          @reveal="emit('reveal')"
-          @mount-canvas="(el, entryId) => emit('mount-canvas', el, entryId)"
-        />
+          class="flex-1 flex flex-row min-h-0"
+        >
+          <NoteEditor
+            class="flex-1 min-w-0"
+            :entry="activeEntry"
+            :answers-hidden="answersHidden"
+            @update="emit('mark-dirty')"
+            @blur-save="emit('blur-save')"
+            @reveal="emit('reveal')"
+            @mount-canvas="(el, entryId) => emit('mount-canvas', el, entryId)"
+          />
+          <AiChatSidebar :entry="activeEntry" />
+        </div>
 
         <ReviewPanel
           v-else-if="mode === 'review'"

@@ -9,6 +9,10 @@ import ScreenshotPicker from './ScreenshotPicker.vue'
 import ImageCropper from './ImageCropper.vue'
 import ImageFilterModal from './ImageFilterModal.vue'
 import AnswerPanel from './AnswerPanel.vue'
+import { useKnowledgeBases } from '@/composables/useKnowledgeBases'
+
+const { kbs, refresh: refreshKbs } = useKnowledgeBases()
+refreshKbs()
 
 const props = defineProps<{
   entry: NoteEntry
@@ -52,6 +56,10 @@ function onTagsInput(e: Event) {
     .split(',')
     .map((t: string) => t.trim())
     .filter(Boolean)
+  emit('update')
+}
+function onKbChange(e: Event) {
+  props.entry.kbId = (e.target as HTMLSelectElement).value
   emit('update')
 }
 function onWrongAnswer(val: string) {
@@ -403,6 +411,15 @@ onUnmounted(() => {
         @input="onTagsInput($event)"
         @blur="onBlur"
       />
+      <select
+        class="border border-gray-200 dark:border-[#2e2e2c] bg-gray-50 dark:bg-[#1e1e1c] rounded-lg px-2 py-1.5 text-xs outline-none text-gray-800 dark:text-brand-light focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+        :value="entry.kbId || 'notes'"
+        title="所属知识库"
+        @change="onKbChange($event)"
+        @blur="onBlur"
+      >
+        <option v-for="k in kbs" :key="k.id" :value="k.id">📚 {{ k.name }}</option>
+      </select>
     </div>
 
     <!-- Review history timeline -->
